@@ -8,6 +8,7 @@ import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
 import 'widgets/auth_wrapper.dart';
 import 'widgets/mia_logo.dart';
+import 'widgets/drawer_scaffold.dart'; // Import the new drawer scaffold
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -48,7 +49,6 @@ class MyApp extends StatelessWidget {
           secondary: const Color(0xFF6B8E3D), // Verde del logo
           surface: const Color(0xFFF5F3E8), // Fondo beige claro
           onSurface: const Color(0xFF2B5F8C), // Texto sobre superficies beige
-          // Corrección para surfaceVariant y onSurfaceVariant
           outline: const Color(0xFFE8E5D6), // Beige medio como outline
         ),
         // Configuración adicional para usar los colores beige
@@ -97,6 +97,12 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
+
+        // Configuración de FloatingActionButton
+        floatingActionButtonTheme: const FloatingActionButtonThemeData(
+          backgroundColor: Color(0xFF6B8E3D),
+          foregroundColor: Colors.white,
+        ),
       ),
       home: const SplashScreen(),
       routes: {
@@ -104,6 +110,8 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
+        '/inventory': (context) => const ExampleInventoryScreen(),
+        // Aquí puedes agregar más rutas para otras pantallas
       },
     );
   }
