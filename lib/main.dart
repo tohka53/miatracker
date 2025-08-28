@@ -1,7 +1,34 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'login_screen.dart'; // Importar la pantalla de login separada
+import 'package:supabase_flutter/supabase_flutter.dart';
+import 'config/supabase_config.dart';
+import 'services/auth_service.dart';
+import 'screens/login_screen.dart';
+import 'screens/register_screen.dart';
+import 'screens/home_screen.dart';
+import 'widgets/auth_wrapper.dart';
+import 'widgets/mia_logo.dart';
 
-void main() {
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+
+  try {
+    // Inicializar Supabase
+    await Supabase.initialize(
+      url: SupabaseConfig.supabaseUrl,
+      anonKey: SupabaseConfig.supabaseAnonKey,
+      debug: SupabaseConfig.enableLogging && kDebugMode,
+    );
+
+    if (kDebugMode) {
+      print('✅ Supabase initialized successfully');
+    }
+  } catch (e) {
+    if (kDebugMode) {
+      print('❌ Error initializing Supabase: $e');
+    }
+  }
+
   runApp(const MyApp());
 }
 
@@ -12,93 +39,77 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       title: 'M.I.A Tracker',
+      debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Colores actualizados para coincidir completamente con el logo
+        // Colores actualizados para coincidir con el logo
         colorScheme: ColorScheme.fromSeed(
           seedColor: const Color(0xFF2B5F8C), // Azul principal del logo
           primary: const Color(0xFF2B5F8C), // Azul principal
           secondary: const Color(0xFF6B8E3D), // Verde del logo
           surface: const Color(0xFFF5F3E8), // Fondo beige claro
           onSurface: const Color(0xFF2B5F8C), // Texto sobre superficies beige
-          surfaceVariant: const Color(0xFFE8E5D6), // Beige medio
-          onSurfaceVariant: const Color(0xFF6B8E3D), // Texto sobre beige medio
+          // Corrección para surfaceVariant y onSurfaceVariant
+          outline: const Color(0xFFE8E5D6), // Beige medio como outline
         ),
         // Configuración adicional para usar los colores beige
         scaffoldBackgroundColor: const Color(0xFFF5F3E8), // Fondo beige por defecto
         cardColor: const Color(0xFFE8E5D6), // Tarjetas en beige medio
         useMaterial3: true,
+
+        // Configuración de AppBar
+        appBarTheme: const AppBarTheme(
+          backgroundColor: Color(0xFF2B5F8C),
+          foregroundColor: Colors.white,
+          elevation: 2,
+          centerTitle: true,
+        ),
+
+        // Configuración de botones
+        elevatedButtonTheme: ElevatedButtonThemeData(
+          style: ElevatedButton.styleFrom(
+            elevation: 3,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(15),
+            ),
+          ),
+        ),
+
+        // Configuración de campos de texto
+        inputDecorationTheme: InputDecorationTheme(
+          filled: true,
+          fillColor: Colors.white,
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: BorderSide.none,
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(
+              color: Color(0xFF6B8E3D),
+              width: 2,
+            ),
+          ),
+          errorBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(15),
+            borderSide: const BorderSide(
+              color: Colors.red,
+              width: 1,
+            ),
+          ),
+        ),
       ),
       home: const SplashScreen(),
       routes: {
+        '/auth': (context) => const AuthWrapper(),
         '/login': (context) => const LoginScreen(),
+        '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
       },
     );
   }
 }
 
-// Widget reutilizable para el logo
-class MIALogo extends StatelessWidget {
-  final double? width;
-  final double? height;
-  final BoxFit fit;
-  final bool showBackground;
-  final Color? backgroundColor;
-  final double borderRadius;
-  final Widget? fallbackIcon;
-
-  const MIALogo({
-    super.key,
-    this.width = 80,
-    this.height = 80,
-    this.fit = BoxFit.contain,
-    this.showBackground = false,
-    this.backgroundColor,
-    this.borderRadius = 10,
-    this.fallbackIcon,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    Widget logoImage = Image.asset(
-      'assets/images/logomiatrackersf.png', // Tu logo actualizado
-      width: width,
-      height: height,
-      fit: fit,
-      errorBuilder: (context, error, stackTrace) {
-        return fallbackIcon ??
-            Icon(
-              Icons.assignment_turned_in_outlined,
-              size: width! * 1,
-              color: const Color(0xFF2B5F8C),
-            );
-      },
-    );
-
-    if (showBackground) {
-      return Container(
-        padding: const EdgeInsets.all(15),
-        decoration: BoxDecoration(
-          color: backgroundColor ?? Colors.white,
-          borderRadius: BorderRadius.circular(borderRadius),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
-              spreadRadius: 1,
-              blurRadius: 5,
-              offset: const Offset(0, 2),
-            ),
-          ],
-        ),
-        child: logoImage,
-      );
-    }
-
-    return logoImage;
-  }
-}
-
-// Pantalla de bienvenida/splash
+// Pantalla de bienvenida/splash mejorada
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -106,22 +117,139 @@ class SplashScreen extends StatefulWidget {
   State<SplashScreen> createState() => _SplashScreenState();
 }
 
-class _SplashScreenState extends State<SplashScreen> {
+class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMixin {
+  String _loadingMessage = 'Initializing...';
+  bool _isConnected = false;
+  bool _hasError = false;
+  late AnimationController _logoController;
+  late AnimationController _fadeController;
+  late Animation<double> _logoScale;
+  late Animation<double> _fadeAnimation;
+
   @override
   void initState() {
     super.initState();
-    // Navegar al login después de 3 segundos
-    Future.delayed(const Duration(seconds: 3), () {
+
+    // Configurar animaciones
+    _logoController = AnimationController(
+      duration: const Duration(milliseconds: 1500),
+      vsync: this,
+    );
+
+    _fadeController = AnimationController(
+      duration: const Duration(milliseconds: 800),
+      vsync: this,
+    );
+
+    _logoScale = Tween<double>(
+      begin: 0.5,
+      end: 1.0,
+    ).animate(CurvedAnimation(
+      parent: _logoController,
+      curve: Curves.elasticOut,
+    ));
+
+    _fadeAnimation = Tween<double>(
+      begin: 0.0,
+      end: 1.0,
+    ).animate(_fadeController);
+
+    // Iniciar animaciones
+    _logoController.forward();
+    _fadeController.forward();
+
+    _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    try {
+      // Mostrar mensaje de conexión
+      setState(() {
+        _loadingMessage = 'Connecting to database...';
+      });
+
+      // Esperar un momento para que el usuario vea las animaciones
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Verificar conexión a Supabase
+      final isConnected = await _testSupabaseConnection();
+
+      setState(() {
+        _isConnected = isConnected;
+        _loadingMessage = isConnected
+            ? 'Connected successfully!'
+            : 'Connected in offline mode';
+      });
+
+      // Esperar un momento más
+      await Future.delayed(const Duration(seconds: 1));
+
       if (mounted) {
-        Navigator.pushReplacementNamed(context, '/login');
+        // Navegar al wrapper de autenticación que manejará el estado
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        );
       }
-    });
+    } catch (e) {
+      setState(() {
+        _hasError = true;
+        _loadingMessage = 'Starting in offline mode...';
+      });
+
+      if (kDebugMode) {
+        print('Error during initialization: $e');
+      }
+
+      await Future.delayed(const Duration(seconds: 1));
+
+      if (mounted) {
+        Navigator.pushReplacement(
+          context,
+          PageRouteBuilder(
+            pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              return FadeTransition(opacity: animation, child: child);
+            },
+            transitionDuration: const Duration(milliseconds: 500),
+          ),
+        );
+      }
+    }
+  }
+
+  Future<bool> _testSupabaseConnection() async {
+    try {
+      // Intentar una consulta simple para verificar la conexión
+      await Supabase.instance.client
+          .from('profiles')
+          .select('id')
+          .limit(1);
+      return true;
+    } catch (e) {
+      if (kDebugMode) {
+        print('Connection test failed: $e');
+      }
+      return false;
+    }
+  }
+
+  @override
+  void dispose() {
+    _logoController.dispose();
+    _fadeController.dispose();
+    super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      // Gradiente actualizado para combinar con el logo
       body: Container(
         decoration: const BoxDecoration(
           gradient: LinearGradient(
@@ -132,213 +260,176 @@ class _SplashScreenState extends State<SplashScreen> {
               Color(0xFFE8E5D6), // Beige un poco más oscuro
               Color(0xFF2B5F8C), // Azul del logo en la parte inferior
             ],
-            stops: [0.0, 0.7, 1.0], // Control de donde cambian los colores
+            stops: [0.0, 0.7, 1.0],
           ),
         ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo más grande y sin fondo para que se integre mejor
-              const MIALogo(
-                width: 200, // Más grande
-                height: 200, // Más grande
-                showBackground: false, // Sin fondo para integrarse mejor
-              ),
-              const SizedBox(height: 40),
-              Text(
-                'M.I.A TRACKER',
-                style: TextStyle(
-                  fontSize: 36, // Texto también más grande
-                  fontWeight: FontWeight.bold,
-                  color: const Color(0xFF2B5F8C), // Azul del logo
-                  letterSpacing: 3.0,
-                  shadows: [
-                    Shadow(
-                      offset: const Offset(0, 2),
-                      blurRadius: 4,
-                      color: Colors.black.withValues(alpha: 0.2),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 12),
-              const Text(
-                'Maintenance Inventory Asset Tracker',
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF6B8E3D), // Verde del logo
-                  letterSpacing: 1.2,
-                  fontWeight: FontWeight.w500,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              const SizedBox(height: 50),
-              // Indicador de carga con los colores del logo
-              Container(
-                padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.9),
-                  borderRadius: BorderRadius.circular(15),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.1),
-                      spreadRadius: 1,
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: const Column(
-                  children: [
-                    CircularProgressIndicator(
-                      valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B8E3D)), // Verde del logo
-                      strokeWidth: 3,
-                    ),
-                    SizedBox(height: 15),
-                    Text(
-                      'Loading...',
-                      style: TextStyle(
-                        fontSize: 16,
-                        color: Color(0xFF2B5F8C), // Azul del logo
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-// PANTALLA PRINCIPAL DESPUÉS DEL LOGIN
-class HomeScreen extends StatelessWidget {
-  const HomeScreen({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Row(
-          children: [
-            // Logo pequeño en el AppBar
-            MIALogo(
-              width: 36,
-              height: 36,
-            ),
-            SizedBox(width: 12),
-            Text(
-              'M.I.A Tracker',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                letterSpacing: 1.0,
-              ),
-            ),
-          ],
-        ),
-        backgroundColor: const Color(0xFF2B5F8C), // Azul del logo
-        foregroundColor: Colors.white,
-        elevation: 2,
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.logout),
-            onPressed: () {
-              Navigator.pushReplacementNamed(context, '/login');
-            },
-          ),
-        ],
-      ),
-      body: Container(
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFFF5F3E8), // Fondo beige claro
-              Color(0xFFE8E5D6), // Beige medio
-            ],
-          ),
-        ),
-        child: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              // Logo principal en el home
-              const MIALogo(
-                width: 100,
-                height: 100,
-                showBackground: true,
-              ),
-              const SizedBox(height: 30),
-              const Text(
-                'Welcome to M.I.A Tracker!',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2B5F8C), // Azul del logo
-                ),
-              ),
-              const SizedBox(height: 10),
-              const Text(
-                'Inventory and maintenance management system',
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  fontSize: 16,
-                  color: Color(0xFF6B8E3D), // Verde del logo
-                ),
-              ),
-              const SizedBox(height: 40),
-              // Botones de acción
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+        child: SafeArea(
+          child: FadeTransition(
+            opacity: _fadeAnimation,
+            child: Center(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Inventory module coming soon'),
-                          backgroundColor: Color(0xFF6B8E3D),
-                        ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF2B5F8C), // Azul principal
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                  // Logo animado
+                  ScaleTransition(
+                    scale: _logoScale,
+                    child: const MIALogo(
+                      width: 200,
+                      height: 200,
+                      showBackground: false,
                     ),
-                    icon: const Icon(Icons.inventory),
-                    label: const Text('Inventory'),
                   ),
-                  ElevatedButton.icon(
-                    onPressed: () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Maintenance module coming soon'),
-                          backgroundColor: Color(0xFF6B8E3D),
+                  const SizedBox(height: 40),
+
+                  // Título principal
+                  Text(
+                    'M.I.A TRACKER',
+                    style: TextStyle(
+                      fontSize: 36,
+                      fontWeight: FontWeight.bold,
+                      color: const Color(0xFF2B5F8C),
+                      letterSpacing: 3.0,
+                      shadows: [
+                        Shadow(
+                          offset: const Offset(0, 2),
+                          blurRadius: 4,
+                          color: Colors.black.withOpacity(0.2),
                         ),
-                      );
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF6B8E3D), // Verde del logo
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Subtítulo
+                  const Text(
+                    'Maintenance • Inventory • Asset Tracker',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Color(0xFF6B8E3D),
+                      letterSpacing: 1.2,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 60),
+
+                  // Contenedor de estado
+                  Container(
+                    padding: const EdgeInsets.all(24),
+                    margin: const EdgeInsets.symmetric(horizontal: 40),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(20),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(0.1),
+                          spreadRadius: 1,
+                          blurRadius: 15,
+                          offset: const Offset(0, 5),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        // Icono de estado
+                        if (_hasError)
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.orange,
+                            size: 36,
+                          )
+                        else if (_isConnected)
+                          const Icon(
+                            Icons.check_circle_rounded,
+                            color: Color(0xFF6B8E3D),
+                            size: 36,
+                          )
+                        else
+                          const SizedBox(
+                            width: 36,
+                            height: 36,
+                            child: CircularProgressIndicator(
+                              valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF6B8E3D)),
+                              strokeWidth: 3,
+                            ),
+                          ),
+                        const SizedBox(height: 16),
+
+                        // Mensaje de estado
+                        Text(
+                          _loadingMessage,
+                          style: const TextStyle(
+                            fontSize: 16,
+                            color: Color(0xFF2B5F8C),
+                            fontWeight: FontWeight.w500,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+
+                        // Estado de Supabase
+                        if (_isConnected) ...[
+                          const SizedBox(height: 8),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.cloud_done_rounded,
+                                color: Color(0xFF6B8E3D),
+                                size: 16,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Database Ready',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Color(0xFF6B8E3D),
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ] else if (_hasError) ...[
+                          const SizedBox(height: 8),
+                          const Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Icon(
+                                Icons.cloud_off_rounded,
+                                color: Colors.orange,
+                                size: 16,
+                              ),
+                              SizedBox(width: 6),
+                              Text(
+                                'Offline Mode',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.orange,
+                                  fontWeight: FontWeight.w400,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+
+                  // Información de versión
+                  const Spacer(),
+                  Padding(
+                    padding: const EdgeInsets.only(bottom: 20),
+                    child: Text(
+                      'Version 1.0.0',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.white.withOpacity(0.7),
+                        fontWeight: FontWeight.w300,
                       ),
                     ),
-                    icon: const Icon(Icons.build),
-                    label: const Text('Maintenance'),
                   ),
                 ],
               ),
-            ],
+            ),
           ),
         ),
       ),
