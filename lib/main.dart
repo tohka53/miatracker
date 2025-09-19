@@ -6,9 +6,11 @@ import 'services/auth_service.dart';
 import 'screens/login_screen.dart';
 import 'screens/register_screen.dart';
 import 'screens/home_screen.dart';
+import 'screens/inventory_screen.dart';
+import 'screens/forgot_password_screen.dart';
+import 'screens/reset_password_screen.dart';
 import 'widgets/auth_wrapper.dart';
 import 'widgets/mia_logo.dart';
-import 'widgets/drawer_scaffold.dart'; // Import the new drawer scaffold
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -42,29 +44,23 @@ class MyApp extends StatelessWidget {
       title: 'M.I.A Tracker',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        // Colores actualizados para coincidir con el logo
         colorScheme: ColorScheme.fromSeed(
-          seedColor: const Color(0xFF2B5F8C), // Azul principal del logo
-          primary: const Color(0xFF2B5F8C), // Azul principal
-          secondary: const Color(0xFF6B8E3D), // Verde del logo
-          surface: const Color(0xFFF5F3E8), // Fondo beige claro
-          onSurface: const Color(0xFF2B5F8C), // Texto sobre superficies beige
-          outline: const Color(0xFFE8E5D6), // Beige medio como outline
+          seedColor: const Color(0xFF2B5F8C),
+          primary: const Color(0xFF2B5F8C),
+          secondary: const Color(0xFF6B8E3D),
+          surface: const Color(0xFFF5F3E8),
+          onSurface: const Color(0xFF2B5F8C),
+          outline: const Color(0xFFE8E5D6),
         ),
-        // Configuración adicional para usar los colores beige
-        scaffoldBackgroundColor: const Color(0xFFF5F3E8), // Fondo beige por defecto
-        cardColor: const Color(0xFFE8E5D6), // Tarjetas en beige medio
+        scaffoldBackgroundColor: const Color(0xFFF5F3E8),
+        cardColor: const Color(0xFFE8E5D6),
         useMaterial3: true,
-
-        // Configuración de AppBar
         appBarTheme: const AppBarTheme(
           backgroundColor: Color(0xFF2B5F8C),
           foregroundColor: Colors.white,
           elevation: 2,
           centerTitle: true,
         ),
-
-        // Configuración de botones
         elevatedButtonTheme: ElevatedButtonThemeData(
           style: ElevatedButton.styleFrom(
             elevation: 3,
@@ -73,8 +69,6 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-
-        // Configuración de campos de texto
         inputDecorationTheme: InputDecorationTheme(
           filled: true,
           fillColor: Colors.white,
@@ -97,12 +91,6 @@ class MyApp extends StatelessWidget {
             ),
           ),
         ),
-
-        // Configuración de FloatingActionButton
-        floatingActionButtonTheme: const FloatingActionButtonThemeData(
-          backgroundColor: Color(0xFF6B8E3D),
-          foregroundColor: Colors.white,
-        ),
       ),
       home: const SplashScreen(),
       routes: {
@@ -110,14 +98,38 @@ class MyApp extends StatelessWidget {
         '/login': (context) => const LoginScreen(),
         '/register': (context) => const RegisterScreen(),
         '/home': (context) => const HomeScreen(),
-        '/inventory': (context) => const ExampleInventoryScreen(),
-        // Aquí puedes agregar más rutas para otras pantallas
+        '/inventory': (context) => const InventoryScreen(),
+        '/forgot-password': (context) => const ForgotPasswordScreen(),
+        '/reset-password': (context) => const ResetPasswordScreen(),
+      },
+      // Configurar rutas dinámicas para deep links
+      onGenerateRoute: (RouteSettings settings) {
+        final uri = Uri.parse(settings.name ?? '');
+
+        // Manejar deep links de reset de contraseña
+        if (uri.scheme == 'io.supabase.miatracker' &&
+            uri.host == 'reset-password') {
+          return MaterialPageRoute(
+            builder: (context) => const ResetPasswordScreen(),
+            settings: settings,
+          );
+        }
+
+        // Manejar URLs con fragmentos de Supabase
+        if (uri.fragment.contains('access_token') &&
+            uri.fragment.contains('type=recovery')) {
+          return MaterialPageRoute(
+            builder: (context) => const ResetPasswordScreen(),
+            settings: settings,
+          );
+        }
+
+        return null;
       },
     );
   }
 }
 
-// Pantalla de bienvenida/splash mejorada
 class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
 
@@ -138,7 +150,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
   void initState() {
     super.initState();
 
-    // Configurar animaciones
     _logoController = AnimationController(
       duration: const Duration(milliseconds: 1500),
       vsync: this,
@@ -162,7 +173,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
       end: 1.0,
     ).animate(_fadeController);
 
-    // Iniciar animaciones
     _logoController.forward();
     _fadeController.forward();
 
@@ -171,15 +181,15 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
   Future<void> _initializeApp() async {
     try {
-      // Mostrar mensaje de conexión
       setState(() {
         _loadingMessage = 'Connecting to database...';
       });
 
-      // Esperar un momento para que el usuario vea las animaciones
       await Future.delayed(const Duration(seconds: 2));
 
-      // Verificar conexión a Supabase
+      // Verificar si hay un deep link de reset de contraseña pendiente
+      await _checkForDeepLinks();
+
       final isConnected = await _testSupabaseConnection();
 
       setState(() {
@@ -189,11 +199,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             : 'Connected in offline mode';
       });
 
-      // Esperar un momento más
       await Future.delayed(const Duration(seconds: 1));
 
       if (mounted) {
-        // Navegar al wrapper de autenticación que manejará el estado
         Navigator.pushReplacement(
           context,
           PageRouteBuilder(
@@ -232,9 +240,24 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
     }
   }
 
+  Future<void> _checkForDeepLinks() async {
+    // Escuchar cambios de autenticación para deep links
+    Supabase.instance.client.auth.onAuthStateChange.listen((data) {
+      if (data.event == AuthChangeEvent.passwordRecovery && mounted) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(
+              builder: (context) => const ResetPasswordScreen(),
+            ),
+          );
+        });
+      }
+    });
+  }
+
   Future<bool> _testSupabaseConnection() async {
     try {
-      // Intentar una consulta simple para verificar la conexión
       await Supabase.instance.client
           .from('profiles')
           .select('id')
@@ -264,9 +287,9 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
             colors: [
-              Color(0xFFF5F3E8), // Beige claro similar al fondo del logo
-              Color(0xFFE8E5D6), // Beige un poco más oscuro
-              Color(0xFF2B5F8C), // Azul del logo en la parte inferior
+              Color(0xFFF5F3E8),
+              Color(0xFFE8E5D6),
+              Color(0xFF2B5F8C),
             ],
             stops: [0.0, 0.7, 1.0],
           ),
@@ -278,7 +301,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo animado
                   ScaleTransition(
                     scale: _logoScale,
                     child: const MIALogo(
@@ -288,8 +310,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     ),
                   ),
                   const SizedBox(height: 40),
-
-                  // Título principal
                   Text(
                     'M.I.A TRACKER',
                     style: TextStyle(
@@ -307,8 +327,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     ),
                   ),
                   const SizedBox(height: 12),
-
-                  // Subtítulo
                   const Text(
                     'Maintenance • Inventory • Asset Tracker',
                     style: TextStyle(
@@ -320,8 +338,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 60),
-
-                  // Contenedor de estado
                   Container(
                     padding: const EdgeInsets.all(24),
                     margin: const EdgeInsets.symmetric(horizontal: 40),
@@ -339,7 +355,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                     ),
                     child: Column(
                       children: [
-                        // Icono de estado
                         if (_hasError)
                           const Icon(
                             Icons.warning_amber_rounded,
@@ -362,8 +377,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                             ),
                           ),
                         const SizedBox(height: 16),
-
-                        // Mensaje de estado
                         Text(
                           _loadingMessage,
                           style: const TextStyle(
@@ -373,8 +386,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                           ),
                           textAlign: TextAlign.center,
                         ),
-
-                        // Estado de Supabase
                         if (_isConnected) ...[
                           const SizedBox(height: 8),
                           const Row(
@@ -421,8 +432,6 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
                       ],
                     ),
                   ),
-
-                  // Información de versión
                   const Spacer(),
                   Padding(
                     padding: const EdgeInsets.only(bottom: 20),

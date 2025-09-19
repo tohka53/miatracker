@@ -63,11 +63,37 @@ class AuthService {
   // Restablecer contraseña
   static Future<void> resetPassword(String email) async {
     try {
-      await _supabase.auth.resetPasswordForEmail(email);
+      await _supabase.auth.resetPasswordForEmail(
+        email,
+        redirectTo: 'io.supabase.miatracker://reset-password',
+      );
     } on AuthException catch (e) {
       throw AuthException(e.message);
     } catch (e) {
       throw Exception('Error al restablecer contraseña: $e');
+    }
+  }
+
+  // Actualizar contraseña (MÉTODO NECESARIO PARA RESET PASSWORD)
+  static Future<UserResponse> updatePassword(String newPassword) async {
+    try {
+      if (!isAuthenticated) {
+        throw Exception('Usuario no autenticado');
+      }
+
+      final response = await _supabase.auth.updateUser(
+        UserAttributes(password: newPassword),
+      );
+
+      if (response.user == null) {
+        throw Exception('Error al actualizar la contraseña');
+      }
+
+      return response;
+    } on AuthException catch (e) {
+      throw AuthException(e.message);
+    } catch (e) {
+      throw Exception('Error al actualizar contraseña: $e');
     }
   }
 
@@ -102,6 +128,94 @@ class AuthService {
           .eq('id', currentUser!.id);
     } catch (e) {
       throw Exception('Error al actualizar perfil: $e');
+    }
+  }
+
+  // Reenviar email de confirmación
+  static Future<void> resendEmailConfirmation(String email) async {
+    try {
+      await _supabase.auth.resend(
+        type: OtpType.signup,
+        email: email,
+      );
+    } on AuthException catch (e) {
+      throw AuthException(e.message);
+    } catch (e) {
+      throw Exception('Error al reenviar email de confirmación: $e');
+    }
+  }
+
+  // Verificar estado de la sesión actual
+  static Future<Session?> getCurrentSession() async {
+    try {
+      final session = _supabase.auth.currentSession;
+      return session;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Refrescar la sesión actual
+  static Future<AuthResponse> refreshSession() async {
+    try {
+      final response = await _supabase.auth.refreshSession();
+      return response;
+    } on AuthException catch (e) {
+      throw AuthException(e.message);
+    } catch (e) {
+      throw Exception('Error al refrescar sesión: $e');
+    }
+  }
+
+  // Método para manejar deep links de reset de contraseña
+  static Future<bool> handlePasswordResetLink(String link) async {
+    try {
+      final uri = Uri.parse(link);
+
+      // Extraer parámetros del fragment o query
+      String? accessToken;
+      String? type;
+
+      if (uri.fragment.isNotEmpty) {
+        final fragmentParams = Uri.splitQueryString(uri.fragment);
+        accessToken = fragmentParams['access_token'];
+        type = fragmentParams['type'];
+      } else if (uri.queryParameters.isNotEmpty) {
+        accessToken = uri.queryParameters['access_token'];
+        type = uri.queryParameters['type'];
+      }
+
+      if (accessToken != null && type == 'recovery') {
+        try {
+          // Usar el método correcto para Supabase Flutter 2.6.0+
+          final response = await _supabase.auth.setSession(accessToken);
+          return response.session != null;
+        } catch (e) {
+          // Método alternativo si el anterior falla
+          try {
+            await _supabase.auth.recoverSession(accessToken);
+            return true;
+          } catch (e2) {
+            return false;
+          }
+        }
+      }
+
+      return false;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Validar si un enlace es válido para la app
+  static bool isValidAppLink(String link) {
+    try {
+      final uri = Uri.parse(link);
+      return uri.scheme == 'io.supabase.miatracker' ||
+          uri.host.contains('supabase.co') ||
+          uri.host.contains('miatracker.com');
+    } catch (e) {
+      return false;
     }
   }
 }

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 import '../widgets/mia_logo.dart';
+import '../screens/inventory_screen.dart';
 
 class CollapsibleDrawer extends StatefulWidget {
   final Widget child;
@@ -204,7 +205,7 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
               child: _buildMenuItems(),
             ),
             _buildMenuFooter(),
-            const SizedBox(height: 10), // Extra padding at bottom
+            const SizedBox(height: 10),
           ],
         ),
       ),
@@ -315,7 +316,6 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
   }
 
   Widget _buildMenuItem(DrawerMenuItem item) {
-    // Pre-calculate colors to avoid repeated withOpacity calls
     const selectedTextColor = Colors.white;
     final unselectedTextColor = Colors.white.withValues(alpha: 0.8);
     final selectedBackgroundColor = Colors.white.withValues(alpha: 0.15);
@@ -442,16 +442,21 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
     _toggleMenu(); // Close menu first
 
     Future.delayed(const Duration(milliseconds: 250), () {
-      // Check if widget is still mounted before using context
       if (!mounted) return;
 
       if (widget.currentRoute != route) {
-        // Navigate to different screen
         switch (route) {
           case '/home':
             Navigator.pushReplacementNamed(context, '/home');
             break;
           case '/inventory':
+            Navigator.pushReplacement(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const InventoryScreen(),
+              ),
+            );
+            break;
           case '/maintenance':
           case '/reports':
           case '/categories':
@@ -466,7 +471,6 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
   }
 
   void _showModuleInfo(String route) {
-    // Check if widget is still mounted before showing dialog
     if (!mounted) return;
 
     final moduleName = route.replaceFirst('/', '').capitalize();
@@ -546,9 +550,7 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
   Future<void> _handleLogout() async {
     try {
       await AuthService.signOut();
-      // AuthWrapper manejará la navegación automáticamente
     } catch (e) {
-      // Check if widget is still mounted before showing SnackBar
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(

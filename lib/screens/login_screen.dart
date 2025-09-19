@@ -3,6 +3,7 @@ import '../widgets/mia_logo.dart';
 import '../services/auth_service.dart';
 import '../utils/supabase_utils.dart';
 import 'register_screen.dart';
+import 'forgot_password_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -179,7 +180,14 @@ class _LoginScreenState extends State<LoginScreen> {
                           ],
                         ),
                         TextButton(
-                          onPressed: _showForgotPasswordDialog,
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                builder: (context) => const ForgotPasswordScreen(),
+                              ),
+                            );
+                          },
                           child: const Text(
                             'Forgot Password?',
                             style: TextStyle(
@@ -336,105 +344,11 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  void _showForgotPasswordDialog() {
-    final emailController = TextEditingController();
-    showDialog(
-      context: context,
-      builder: (BuildContext dialogContext) {
-        return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
-          title: const Row(
-            children: [
-              Icon(
-                Icons.help_outline,
-                color: Color(0xFF2B5F8C),
-                size: 28,
-              ),
-              SizedBox(width: 10),
-              Text('Reset Password'),
-            ],
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const Text(
-                'Enter your email address and we\'ll send you a link to reset your password.',
-              ),
-              const SizedBox(height: 20),
-              TextFormField(
-                controller: emailController,
-                keyboardType: TextInputType.emailAddress,
-                decoration: const InputDecoration(
-                  labelText: 'Email',
-                  prefixIcon: Icon(Icons.email, color: Color(0xFF2B5F8C)),
-                  border: OutlineInputBorder(),
-                ),
-              ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text(
-                'Cancel',
-                style: TextStyle(color: Colors.grey),
-              ),
-            ),
-            TextButton(
-              onPressed: () async {
-                if (emailController.text.isNotEmpty &&
-                    SupabaseUtils.isValidEmail(emailController.text)) {
-                  try {
-                    await AuthService.resetPassword(emailController.text.trim());
-                    if (dialogContext.mounted) {
-                      Navigator.of(dialogContext).pop();
-                    }
-                    if (mounted) {
-                      _showSuccessSnackBar('Password reset email sent. Check your inbox.');
-                    }
-                  } catch (e) {
-                    if (mounted) {
-                      final errorMessage = SupabaseUtils.handleSupabaseError(e);
-                      _showErrorSnackBar(errorMessage);
-                    }
-                  }
-                } else {
-                  if (mounted) {
-                    _showErrorSnackBar('Please enter a valid email address');
-                  }
-                }
-              },
-              child: const Text(
-                'Send Reset Link',
-                style: TextStyle(color: Color(0xFF6B8E3D)),
-              ),
-            ),
-          ],
-        );
-      },
-    );
-  }
-
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Text(message),
         backgroundColor: Colors.red,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(10),
-        ),
-        behavior: SnackBarBehavior.floating,
-      ),
-    );
-  }
-
-  void _showSuccessSnackBar(String message) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: const Color(0xFF6B8E3D),
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(10),
         ),

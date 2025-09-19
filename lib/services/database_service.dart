@@ -224,7 +224,7 @@ class DatabaseService {
     }
   }
 
-  // Suscripciones en tiempo real - versión simplificada
+  // Suscripciones en tiempo real - versión corregida
   static Stream<List<Map<String, dynamic>>> getAssetsStream() {
     final userId = AuthService.currentUser?.id;
     if (userId == null) {
@@ -234,8 +234,13 @@ class DatabaseService {
     return _supabase
         .from('assets')
         .stream(primaryKey: ['id'])
-        .eq('user_id', userId)
-        .order('created_at', ascending: false);
+        .map((List<Map<String, dynamic>> data) {
+      return data.where((item) =>
+      item['user_id'] == userId
+      ).toList()
+        ..sort((a, b) => DateTime.parse(b['created_at'] ?? DateTime.now().toIso8601String())
+            .compareTo(DateTime.parse(a['created_at'] ?? DateTime.now().toIso8601String())));
+    });
   }
 
   static Stream<List<Map<String, dynamic>>> getMaintenanceRecordsStream() {
@@ -247,8 +252,13 @@ class DatabaseService {
     return _supabase
         .from('maintenance_records')
         .stream(primaryKey: ['id'])
-        .eq('user_id', userId)
-        .order('scheduled_date', ascending: false);
+        .map((List<Map<String, dynamic>> data) {
+      return data.where((item) =>
+      item['user_id'] == userId
+      ).toList()
+        ..sort((a, b) => DateTime.parse(b['scheduled_date'] ?? DateTime.now().toIso8601String())
+            .compareTo(DateTime.parse(a['scheduled_date'] ?? DateTime.now().toIso8601String())));
+    });
   }
 
   // Verificar conexión con la base de datos
