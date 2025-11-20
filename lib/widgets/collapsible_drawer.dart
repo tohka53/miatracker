@@ -1,7 +1,34 @@
 import 'package:flutter/material.dart';
+import '../screens/qr_complete_order_screen.dart';
 import '../services/auth_service.dart';
+import '../services/cart_service.dart';
+import '../services/marketplace_cart_service.dart';
+import '../services/profile_service.dart';
 import '../widgets/mia_logo.dart';
 import '../screens/inventory_screen.dart';
+import '../screens/shopping_cart_screen.dart';
+import '../screens/transfer_screen.dart';
+import '../screens/restock_management_screen.dart';
+import '../screens/help_support_screen.dart';
+
+// Suppliers
+import '../screens/suppliers/supply_company_screen.dart';
+import '../screens/suppliers/supplier_dashboard.dart';
+import '../screens/suppliers/products_without_supplier_screen.dart';
+
+// Reports
+import '../screens/reports/inventory_reports_screen.dart';
+
+// Marketplace
+import '../screens/marketplace/supply_marketplace_screen.dart';
+import '../screens/marketplace/marketplace_cart_screen.dart';
+import '../screens/marketplace/supplier_management_screen.dart';
+
+// Orders
+import '../screens/orders_screen.dart';
+
+// Settings
+import '../screens/settings/company_settings_screen.dart';
 
 class CollapsibleDrawer extends StatefulWidget {
   final Widget child;
@@ -25,47 +52,85 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
 
   bool _isMenuOpen = false;
   final double _menuWidth = 280;
-  final double _collapsedWidth = 70;
+  final CartService _cartService = CartService();
+  final MarketplaceCartService _marketplaceCartService = MarketplaceCartService();
+
+  // 🆕 Roles del usuario
+  String _userRole = 'user'; // 'user', 'supervisor', 'admin'
+  bool _isSupplier = false;
+  bool _isLoadingRole = true;
 
   @override
   void initState() {
     super.initState();
+    _initAnimations();
+    _cartService.addListener(_onCartChanged);
+    _marketplaceCartService.addListener(_onCartChanged);
+    _loadUserRole();
+    _checkIfSupplier();
+  }
+
+  void _initAnimations() {
     _animationController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 250),
     );
 
-    _menuScaleAnimation = Tween<double>(
-      begin: 0.0,
-      end: 1.0,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _menuScaleAnimation = Tween<double>(begin: 0.0, end: 1.0).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
 
-    _contentScaleAnimation = Tween<double>(
-      begin: 1.0,
-      end: 0.85,
-    ).animate(CurvedAnimation(
-      parent: _animationController,
-      curve: Curves.easeInOut,
-    ));
+    _contentScaleAnimation = Tween<double>(begin: 1.0, end: 0.85).animate(
+      CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
+    );
+  }
+
+  // 🆕 Cargar rol del usuario
+  Future<void> _loadUserRole() async {
+    try {
+      final profile = await AuthService.getUserProfile();
+      final role = profile?['role'] ?? 'user';
+
+      if (mounted) {
+        setState(() {
+          _userRole = role.toString().toLowerCase();
+          _isLoadingRole = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _userRole = 'user';
+          _isLoadingRole = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _checkIfSupplier() async {
+    // TODO: Verificar en Supabase si el usuario tiene modo proveedor activo
+    setState(() => _isSupplier = false); // Por ahora false
+  }
+
+  // 🆕 Verificadores de roles
+  bool get _isUser => _userRole == 'user';
+  bool get _isSupervisor => _userRole == 'supervisor';
+  bool get _isAdmin => _userRole == 'admin';
+  bool get _isAdminOrSupervisor => _isAdmin || _isSupervisor;
+
+  void _onCartChanged() {
+    if (mounted) setState(() {});
   }
 
   void _toggleMenu() {
-    setState(() {
-      _isMenuOpen = !_isMenuOpen;
-    });
-
-    if (_isMenuOpen) {
-      _animationController.forward();
-    } else {
-      _animationController.reverse();
-    }
+    setState(() => _isMenuOpen = !_isMenuOpen);
+    _isMenuOpen ? _animationController.forward() : _animationController.reverse();
   }
 
   @override
   void dispose() {
+    _cartService.removeListener(_onCartChanged);
+    _marketplaceCartService.removeListener(_onCartChanged);
     _animationController.dispose();
     super.dispose();
   }
@@ -75,35 +140,18 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
     return Scaffold(
       body: Stack(
         children: [
-          // Background gradient
+          // Fondo del drawer
           Container(
             decoration: const BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  Color(0xFF2B5F8C),
-                  Color(0xFF1A4A6B),
-                ],
+                colors: [Color(0xFF2B5F8C), Color(0xFF1A4A6B)],
               ),
             ),
           ),
 
-          // Side Menu
-          AnimatedBuilder(
-            animation: _animationController,
-            builder: (context, child) {
-              return Transform.translate(
-                offset: Offset(
-                  _menuScaleAnimation.value * _menuWidth - _menuWidth,
-                  0,
-                ),
-                child: _buildSideMenu(),
-              );
-            },
-          ),
-
-          // Main Content
+          // Contenido principal con animación
           AnimatedBuilder(
             animation: _animationController,
             builder: (context, child) {
@@ -125,23 +173,46 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
             },
           ),
 
-          // Menu button
+          // Overlay semitransparente
+          if (_isMenuOpen)
+            Positioned.fill(
+              child: GestureDetector(
+                onTap: _toggleMenu,
+                behavior: HitTestBehavior.translucent,
+                child: Container(
+                  color: Colors.black.withValues(alpha: 0.3),
+                ),
+              ),
+            ),
+
+          // Menú lateral
+          AnimatedBuilder(
+            animation: _animationController,
+            builder: (context, child) {
+              return Transform.translate(
+                offset: Offset(
+                  _menuScaleAnimation.value * _menuWidth - _menuWidth,
+                  0,
+                ),
+                child: _buildSideMenu(),
+              );
+            },
+          ),
+
+          // Botones superiores
           Positioned(
             top: MediaQuery.of(context).padding.top + 10,
             left: 16,
-            child: _buildMenuButton(),
-          ),
-
-          // Overlay to close menu when tapping outside
-          if (_isMenuOpen)
-            GestureDetector(
-              onTap: _toggleMenu,
-              child: Container(
-                color: Colors.black.withOpacity(0.3),
-                width: MediaQuery.of(context).size.width,
-                height: MediaQuery.of(context).size.height,
-              ),
+            child: Row(
+              children: [
+                _buildMenuButton(),
+                const SizedBox(width: 12),
+                if (widget.currentRoute != '/cart' &&
+                    widget.currentRoute != '/marketplace-cart')
+                  _buildCartBadges(),
+              ],
             ),
+          ),
         ],
       ),
     );
@@ -156,7 +227,7 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -181,146 +252,573 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
     );
   }
 
-  Widget _buildSideMenu() {
-    return Container(
-      width: _menuWidth,
-      height: MediaQuery.of(context).size.height,
-      decoration: const BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topCenter,
-          end: Alignment.bottomCenter,
-          colors: [
-            Color(0xFF2B5F8C),
-            Color(0xFF1A4A6B),
-          ],
-        ),
-      ),
-      child: SafeArea(
-        child: Column(
-          children: [
-            const SizedBox(height: 20),
-            _buildUserProfile(),
-            const SizedBox(height: 30),
-            Expanded(
-              child: _buildMenuItems(),
-            ),
-            _buildMenuFooter(),
-            const SizedBox(height: 10),
-          ],
-        ),
-      ),
+  Widget _buildCartBadges() {
+    return Row(
+      children: [
+        if (_cartService.totalItems > 0)
+          _buildCartBadge(
+            icon: Icons.shopping_cart_outlined,
+            count: _cartService.totalItems,
+            route: '/cart',
+            color: const Color(0xFF6B8E3D),
+          ),
+        const SizedBox(width: 8),
+        if (_marketplaceCartService.totalItems > 0)
+          _buildCartBadge(
+            icon: Icons.store,
+            count: _marketplaceCartService.totalItems,
+            route: '/marketplace-cart',
+            color: const Color(0xFF2B5F8C),
+          ),
+      ],
     );
   }
 
-  Widget _buildUserProfile() {
-    final user = AuthService.currentUser;
-    final emailColor = Colors.white.withValues(alpha: 0.8);
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      child: Column(
+  Widget _buildCartBadge({
+    required IconData icon,
+    required int count,
+    required String route,
+    required Color color,
+  }) {
+    return GestureDetector(
+      onTap: () => Navigator.pushNamed(context, route),
+      child: Stack(
         children: [
-          const MIALogo(
-            width: 60,
-            height: 60,
-            showBackground: true,
-            backgroundColor: Colors.white,
-            borderRadius: 15,
-          ),
-          const SizedBox(height: 15),
-          Text(
-            user?.userMetadata?['full_name'] ?? 'Usuario',
-            style: const TextStyle(
+          Container(
+            width: 50,
+            height: 50,
+            decoration: BoxDecoration(
               color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
+              borderRadius: BorderRadius.circular(15),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.1),
+                  blurRadius: 10,
+                  offset: const Offset(0, 2),
+                ),
+              ],
             ),
-            textAlign: TextAlign.center,
+            child: Icon(icon, color: color, size: 24),
           ),
-          const SizedBox(height: 5),
-          Text(
-            user?.email ?? '',
-            style: TextStyle(
-              color: emailColor,
-              fontSize: 12,
+          Positioned(
+            top: 0,
+            right: 0,
+            child: Container(
+              padding: const EdgeInsets.all(4),
+              decoration: BoxDecoration(
+                color: Colors.red,
+                shape: BoxShape.circle,
+                border: Border.all(color: Colors.white, width: 2),
+              ),
+              constraints: const BoxConstraints(
+                minWidth: 20,
+                minHeight: 20,
+              ),
+              child: Center(
+                child: Text(
+                  count.toString(),
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
             ),
-            textAlign: TextAlign.center,
-            overflow: TextOverflow.ellipsis,
           ),
         ],
       ),
     );
   }
 
-  Widget _buildMenuItems() {
-    final menuItems = <Widget>[
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.home_outlined,
-        title: 'Home',
-        route: '/home',
-        isSelected: widget.currentRoute == '/home',
-      )),
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.inventory_2_outlined,
-        title: 'Inventory',
-        route: '/inventory',
-        isSelected: widget.currentRoute == '/inventory',
-      )),
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.build_outlined,
-        title: 'Maintenance',
-        route: '/maintenance',
-        isSelected: widget.currentRoute == '/maintenance',
-      )),
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.analytics_outlined,
-        title: 'Reports',
-        route: '/reports',
-        isSelected: widget.currentRoute == '/reports',
-      )),
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.category_outlined,
-        title: 'Categories',
-        route: '/categories',
-        isSelected: widget.currentRoute == '/categories',
-      )),
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.location_on_outlined,
-        title: 'Locations',
-        route: '/locations',
-        isSelected: widget.currentRoute == '/locations',
-      )),
-      const SizedBox(height: 20), // Separator
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.settings_outlined,
-        title: 'Settings',
-        route: '/settings',
-        isSelected: widget.currentRoute == '/settings',
-      )),
-      _buildMenuItem(DrawerMenuItem(
-        icon: Icons.help_outline,
-        title: 'Help & Support',
-        route: '/help',
-        isSelected: widget.currentRoute == '/help',
-      )),
-    ];
+  Widget _buildSideMenu() {
+    final user = AuthService.currentUser;
+    final userName = user?.userMetadata?['full_name'] ?? 'User';
+    final userEmail = user?.email ?? '';
+    final userInitial = (user?.email?.substring(0, 1).toUpperCase() ?? 'U');
 
-    return ListView.separated(
-      padding: const EdgeInsets.symmetric(horizontal: 10),
-      itemCount: menuItems.length,
-      separatorBuilder: (context, index) => const SizedBox(height: 2),
-      itemBuilder: (context, index) {
-        return menuItems[index];
-      },
+    return SizedBox(
+      width: _menuWidth,
+      child: Material(
+        color: Colors.transparent,
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildUserHeader(userInitial, userName, userEmail),
+              Expanded(child: _buildMenuItems()),
+              _buildMenuFooter(),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildUserHeader(String initial, String name, String email) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 30,
+            backgroundColor: Colors.white,
+            child: Text(
+              initial,
+              style: const TextStyle(
+                fontSize: 28,
+                color: Color(0xFF2B5F8C),
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(width: 15),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Flexible(
+                      child: Text(
+                        name,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                    // 🆕 Badge del rol
+                    if (!_isLoadingRole) ...[
+                      const SizedBox(width: 8),
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: _getRoleBadgeColor(),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Text(
+                          _getRoleBadgeText(),
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 9,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  email,
+                  style: TextStyle(
+                    color: Colors.white.withValues(alpha: 0.8),
+                    fontSize: 14,
+                  ),
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // 🆕 Helpers para badge de rol
+  Color _getRoleBadgeColor() {
+    switch (_userRole) {
+      case 'admin':
+        return const Color(0xFFDC2626); // Rojo
+      case 'supervisor':
+        return const Color(0xFF6B8E3D); // Verde
+      default:
+        return const Color(0xFF2B5F8C); // Azul
+    }
+  }
+
+  String _getRoleBadgeText() {
+    switch (_userRole) {
+      case 'admin':
+        return 'ADMIN';
+      case 'supervisor':
+        return 'SUPERVISOR';
+      default:
+        return 'USER';
+    }
+  }
+
+  Widget _buildMenuItems() {
+    return ListView(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      physics: const BouncingScrollPhysics(),
+      children: [
+        // ========================================
+        // SECCIÓN: PRINCIPAL (TODOS LOS USUARIOS)
+        // ========================================
+        _buildMenuItem(DrawerMenuItem(
+          icon: Icons.home_outlined,
+          title: 'Home',
+          route: '/home',
+          isSelected: widget.currentRoute == '/home',
+        )),
+
+        _buildMenuItem(DrawerMenuItem(
+          icon: Icons.inventory_2_outlined,
+          title: 'Inventory',
+          route: '/inventory',
+          isSelected: widget.currentRoute == '/inventory',
+        )),
+
+        _buildCartMenuItem('/cart', 'Take Out Stock', _cartService),
+
+        const Divider(height: 24, color: Colors.white24),
+
+        // ========================================
+        // SECCIÓN: SUPPLIERS (Admin/Supervisor)
+        // ========================================
+        if (_isAdminOrSupervisor && !_isLoadingRole) ...[
+          _buildSectionHeader('Suppliers'),
+
+          _buildExpandableMenuItem(
+            icon: Icons.business_outlined,
+            title: 'Suppliers',
+            routes: {
+              '/suppliers': 'All Suppliers',
+              '/suppliers/dashboard': 'Dashboard',
+              '/suppliers/products-without': 'Products Without Supplier',
+            },
+          ),
+
+          _buildMenuItem(DrawerMenuItem(
+            icon: Icons.add_box_outlined,
+            title: 'Restock Management',
+            route: '/restock-management',
+            isSelected: widget.currentRoute == '/restock-management',
+          )),
+
+          if (_isAdmin) // Solo admin puede completar órdenes con QR
+            _buildMenuItem(DrawerMenuItem(
+              icon: Icons.qr_code_2,
+              title: 'Complete Order (QR)',
+              route: '/qr-complete-order',
+              isSelected: widget.currentRoute == '/qr-complete-order',
+            )),
+
+          const Divider(height: 24, color: Colors.white24),
+        ],
+
+        // ========================================
+        // SECCIÓN: ORDERS (Admin/Supervisor)
+        // ========================================
+        if (_isAdminOrSupervisor && !_isLoadingRole) ...[
+          _buildSectionHeader('Orders'),
+
+          _buildMenuItem(DrawerMenuItem(
+            icon: Icons.receipt_long_outlined,
+            title: 'General Orders',
+            route: '/general-orders',
+            isSelected: widget.currentRoute == '/general-orders',
+          )),
+
+          /*_buildMenuItem(DrawerMenuItem(
+            icon: Icons.shopping_bag_outlined,
+            title: 'Marketplace Orders',
+            route: '/orders',
+            isSelected: widget.currentRoute == '/orders',
+          )),*/
+
+          const Divider(height: 24, color: Colors.white24),
+        ],
+
+        // ========================================
+        // SECCIÓN: MARKETPLACE (Admin/Supervisor)
+        // ========================================
+        if (_isAdminOrSupervisor && !_isLoadingRole) ...[
+          _buildSectionHeader('Marketplace'),
+
+          _buildMenuItem(DrawerMenuItem(
+            icon: Icons.store_outlined,
+            title: 'Browse Products',
+            route: '/marketplace',
+            isSelected: widget.currentRoute == '/marketplace',
+          )),
+
+          /*_buildCartMenuItem(
+              '/marketplace-cart',
+              'Marketplace Cart',
+              _marketplaceCartService
+          ),*/
+
+          const Divider(height: 24, color: Colors.white24),
+        ],
+
+        // ========================================
+        // SECCIÓN: SUPPLIER MODE (Si es proveedor)
+        // ========================================
+        if (_isSupplier) ...[
+          _buildSectionHeader('I\'m a Supplier'),
+
+          _buildMenuItem(DrawerMenuItem(
+            icon: Icons.dashboard_outlined,
+            title: 'Supplier Panel',
+            route: '/supplier-management',
+            isSelected: widget.currentRoute == '/supplier-management',
+          )),
+
+          const Divider(height: 24, color: Colors.white24),
+        ],
+
+        // ========================================
+        // SECCIÓN: OPERATIONS (Admin/Supervisor)
+        // ========================================
+        if (_isAdminOrSupervisor && !_isLoadingRole) ...[
+          _buildSectionHeader('Operations'),
+
+          _buildMenuItem(DrawerMenuItem(
+            icon: Icons.swap_horiz_outlined,
+            title: 'Transfers',
+            route: '/transfers',
+            isSelected: widget.currentRoute == '/transfers',
+          )),
+
+          _buildMenuItem(DrawerMenuItem(
+            icon: Icons.analytics_outlined,
+            title: 'Reports',
+            route: '/reports',
+            isSelected: widget.currentRoute == '/reports',
+          )),
+
+          const Divider(height: 24, color: Colors.white24),
+        ],
+
+        // ========================================
+        // SECCIÓN: ADMINISTRATION (Solo Admin)
+        // ========================================
+        if (_isAdmin && !_isLoadingRole) ...[
+          _buildSectionHeader('Administration'),
+
+          _buildMenuItem(DrawerMenuItem(
+            icon: Icons.settings_outlined,
+            title: 'Company Settings',
+            route: '/company-settings',
+            isSelected: widget.currentRoute == '/company-settings',
+          )),
+
+          const Divider(height: 24, color: Colors.white24),
+        ],
+
+        // ========================================
+        // SECCIÓN: HELP (TODOS LOS USUARIOS)
+        // ========================================
+        _buildMenuItem(DrawerMenuItem(
+          icon: Icons.help_outline,
+          title: 'Help & Support',
+          route: '/help',
+          isSelected: widget.currentRoute == '/help',
+        )),
+      ],
+    );
+  }
+
+  Widget _buildSectionHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 10, 20, 5),
+      child: Text(
+        title.toUpperCase(),
+        style: TextStyle(
+          color: Colors.white.withValues(alpha: 0.6),
+          fontSize: 11,
+          fontWeight: FontWeight.bold,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildExpandableMenuItem({
+    required IconData icon,
+    required String title,
+    required Map<String, String> routes,
+  }) {
+    final isAnySelected = routes.keys.any((route) => widget.currentRoute == route);
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      child: Theme(
+        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
+        child: ExpansionTile(
+          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 5),
+          leading: Icon(
+            icon,
+            color: isAnySelected
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.8),
+            size: 24,
+          ),
+          title: Text(
+            title,
+            style: TextStyle(
+              color: isAnySelected
+                  ? Colors.white
+                  : Colors.white.withValues(alpha: 0.8),
+              fontSize: 16,
+              fontWeight: isAnySelected ? FontWeight.w600 : FontWeight.normal,
+            ),
+          ),
+          trailing: Icon(
+            Icons.keyboard_arrow_down,
+            color: isAnySelected
+                ? Colors.white
+                : Colors.white.withValues(alpha: 0.8),
+          ),
+          children: routes.entries.map((entry) {
+            final isSelected = widget.currentRoute == entry.key;
+            return Material(
+              color: Colors.transparent,
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => _onMenuItemTap(entry.key),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 12),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 4,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: isSelected
+                              ? Colors.white
+                              : Colors.white.withValues(alpha: 0.5),
+                          shape: BoxShape.circle,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Text(
+                          entry.value,
+                          style: TextStyle(
+                            color: isSelected
+                                ? Colors.white
+                                : Colors.white.withValues(alpha: 0.8),
+                            fontSize: 14,
+                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            );
+          }).toList(),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildCartMenuItem(String route, String title, dynamic cartService) {
+    final isSelected = widget.currentRoute == route;
+    final totalItems = cartService.totalItems as int;
+    final totalAmount = cartService.totalAmount as double;
+
+    return Container(
+      margin: const EdgeInsets.symmetric(vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          borderRadius: BorderRadius.circular(15),
+          onTap: () => _onMenuItemTap(route),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+            decoration: BoxDecoration(
+              color: isSelected
+                  ? Colors.white.withValues(alpha: 0.15)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(15),
+              border: isSelected
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.3))
+                  : null,
+            ),
+            child: Row(
+              children: [
+                Stack(
+                  children: [
+                    Icon(
+                      route == '/cart'
+                          ? Icons.shopping_cart_outlined
+                          : Icons.store_outlined,
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.8),
+                      size: 24,
+                    ),
+                    if (totalItems > 0)
+                      Positioned(
+                        right: 0,
+                        top: 0,
+                        child: Container(
+                          padding: const EdgeInsets.all(2),
+                          constraints: const BoxConstraints(minWidth: 14, minHeight: 14),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF6B8E3D),
+                            borderRadius: BorderRadius.circular(7),
+                            border: Border.all(color: Colors.white, width: 1),
+                          ),
+                          child: Text(
+                            totalItems > 99 ? '99+' : totalItems.toString(),
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 8,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+                const SizedBox(width: 15),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.8),
+                      fontSize: 16,
+                      fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    ),
+                  ),
+                ),
+                if (totalItems > 0)
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF6B8E3D),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      '\$${totalAmount.toStringAsFixed(0)}',
+                      style: const TextStyle(
+                        color: Colors.white,
+                        fontSize: 10,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
     );
   }
 
   Widget _buildMenuItem(DrawerMenuItem item) {
-    const selectedTextColor = Colors.white;
-    final unselectedTextColor = Colors.white.withValues(alpha: 0.8);
-    final selectedBackgroundColor = Colors.white.withValues(alpha: 0.15);
-    final borderColor = Colors.white.withValues(alpha: 0.3);
-
     return Container(
       margin: const EdgeInsets.symmetric(vertical: 2),
       child: Material(
@@ -333,11 +831,11 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
             padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
             decoration: BoxDecoration(
               color: item.isSelected
-                  ? selectedBackgroundColor
+                  ? Colors.white.withValues(alpha: 0.15)
                   : Colors.transparent,
               borderRadius: BorderRadius.circular(15),
               border: item.isSelected
-                  ? Border.all(color: borderColor)
+                  ? Border.all(color: Colors.white.withValues(alpha: 0.3))
                   : null,
             ),
             child: Row(
@@ -345,8 +843,8 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
                 Icon(
                   item.icon,
                   color: item.isSelected
-                      ? selectedTextColor
-                      : unselectedTextColor,
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.8),
                   size: 24,
                 ),
                 const SizedBox(width: 15),
@@ -355,12 +853,10 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
                     item.title,
                     style: TextStyle(
                       color: item.isSelected
-                          ? selectedTextColor
-                          : unselectedTextColor,
+                          ? Colors.white
+                          : Colors.white.withValues(alpha: 0.8),
                       fontSize: 16,
-                      fontWeight: item.isSelected
-                          ? FontWeight.w600
-                          : FontWeight.normal,
+                      fontWeight: item.isSelected ? FontWeight.w600 : FontWeight.normal,
                     ),
                   ),
                 ),
@@ -382,16 +878,11 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
   }
 
   Widget _buildMenuFooter() {
-    final dividerColor = Colors.white.withValues(alpha: 0.3);
-    final logoutColor = Colors.red.withValues(alpha: 0.8);
-    final logoutBorderColor = Colors.red.withValues(alpha: 0.3);
-    final versionColor = Colors.white.withValues(alpha: 0.5);
-
     return Container(
       padding: const EdgeInsets.all(20),
       child: Column(
         children: [
-          Divider(color: dividerColor),
+          Divider(color: Colors.white.withValues(alpha: 0.3)),
           const SizedBox(height: 10),
           Material(
             color: Colors.transparent,
@@ -402,20 +893,20 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
                 padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                 decoration: BoxDecoration(
                   borderRadius: BorderRadius.circular(15),
-                  border: Border.all(color: logoutBorderColor),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
                     Icon(
                       Icons.logout,
-                      color: logoutColor,
+                      color: Colors.red.withValues(alpha: 0.8),
                       size: 24,
                     ),
                     const SizedBox(width: 15),
                     Text(
-                      'Sign Out',
+                      'Log Out',
                       style: TextStyle(
-                        color: logoutColor,
+                        color: Colors.red.withValues(alpha: 0.8),
                         fontSize: 16,
                         fontWeight: FontWeight.w500,
                       ),
@@ -427,9 +918,9 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
           ),
           const SizedBox(height: 10),
           Text(
-            'M.I.A Tracker v1.0.0',
+            'M.I.A Tracker v1.7.0',
             style: TextStyle(
-              color: versionColor,
+              color: Colors.white.withValues(alpha: 0.5),
               fontSize: 12,
             ),
           ),
@@ -439,33 +930,117 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
   }
 
   void _onMenuItemTap(String route) {
-    _toggleMenu(); // Close menu first
+    if (widget.currentRoute == route) {
+      _toggleMenu();
+      return;
+    }
 
-    Future.delayed(const Duration(milliseconds: 250), () {
+    _toggleMenu();
+
+    Future.delayed(const Duration(milliseconds: 300), () {
       if (!mounted) return;
 
-      if (widget.currentRoute != route) {
-        switch (route) {
-          case '/home':
-            Navigator.pushReplacementNamed(context, '/home');
-            break;
-          case '/inventory':
-            Navigator.pushReplacement(
-              context,
-              MaterialPageRoute(
-                builder: (context) => const InventoryScreen(),
-              ),
-            );
-            break;
-          case '/maintenance':
-          case '/reports':
-          case '/categories':
-          case '/locations':
-          case '/settings':
-          case '/help':
-            _showModuleInfo(route);
-            break;
-        }
+      switch (route) {
+        case '/home':
+          Navigator.pushReplacementNamed(context, '/home');
+          break;
+        case '/inventory':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const InventoryScreen()),
+          );
+          break;
+        case '/cart':
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const ShoppingCartScreen()),
+          );
+          break;
+        case '/qr-complete-order':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const QRCompleteOrderScreen()),
+          );
+          break;
+        case '/general-orders':
+          Navigator.pushReplacementNamed(context, '/general-orders');
+          break;
+        case '/orders':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const OrdersScreen()),
+          );
+          break;
+        case '/marketplace':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SupplyMarketplaceScreen()),
+          );
+          break;
+        case '/marketplace-cart':
+          Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const MarketplaceCartScreen()),
+          );
+          break;
+        case '/supplier-management':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SupplierManagementScreen()),
+          );
+          break;
+        case '/transfers':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const TransferScreen()),
+          );
+          break;
+        case '/suppliers':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SupplyCompanyScreen()),
+          );
+          break;
+        case '/suppliers/dashboard':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const SupplierDashboard()),
+          );
+          break;
+        case '/suppliers/products-without':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const ProductsWithoutSupplierScreen()),
+          );
+          break;
+        case '/reports':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const InventoryReportsScreen()),
+          );
+          break;
+        case '/company-settings':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const CompanySettingsScreen()),
+          );
+          break;
+        case '/restock-management':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const RestockManagementScreen()),
+          );
+          break;
+        case '/help':
+          Navigator.pushReplacement(
+            context,
+            MaterialPageRoute(builder: (context) => const HelpSupportScreen()),
+          );
+          break;
+        case '/settings':
+
+          _showModuleInfo(route);
+          break;
       }
     });
   }
@@ -478,47 +1053,19 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
       context: context,
       builder: (BuildContext dialogContext) {
         return AlertDialog(
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(15),
-          ),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
           title: Row(
             children: [
-              Icon(
-                _getModuleIcon(moduleName),
-                color: const Color(0xFF2B5F8C),
-              ),
+              Icon(_getModuleIcon(moduleName), color: const Color(0xFF2B5F8C)),
               const SizedBox(width: 10),
-              Flexible(
-                child: Text(
-                  moduleName,
-                  overflow: TextOverflow.ellipsis,
-                ),
-              ),
+              Flexible(child: Text(moduleName, overflow: TextOverflow.ellipsis)),
             ],
           ),
-          content: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(
-                  '$moduleName module is currently in development.',
-                  style: const TextStyle(fontSize: 14),
-                ),
-                const SizedBox(height: 12),
-                const Text(
-                  'This module will connect to your Supabase database to provide real-time functionality.',
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
-                ),
-              ],
-            ),
-          ),
+          content: Text('$moduleName module is currently in development.'),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text(
-                'Got it!',
-                style: TextStyle(color: Color(0xFF6B8E3D)),
-              ),
+              child: const Text('Got it!', style: TextStyle(color: Color(0xFF6B8E3D))),
             ),
           ],
         );
@@ -528,16 +1075,6 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
 
   IconData _getModuleIcon(String moduleName) {
     switch (moduleName.toLowerCase()) {
-      case 'inventory':
-        return Icons.inventory_2_outlined;
-      case 'maintenance':
-        return Icons.build_outlined;
-      case 'reports':
-        return Icons.analytics_outlined;
-      case 'categories':
-        return Icons.category_outlined;
-      case 'locations':
-        return Icons.location_on_outlined;
       case 'settings':
         return Icons.settings_outlined;
       case 'help':
@@ -554,7 +1091,7 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al cerrar sesión: $e'),
+            content: Text('Error logging out: $e'),
             backgroundColor: Colors.red,
           ),
         );

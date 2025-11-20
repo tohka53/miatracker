@@ -1,187 +1,215 @@
 import 'package:flutter/material.dart';
-import 'collapsible_drawer.dart';
+import '../services/auth_service.dart';
 
-/// Widget base para pantallas que necesiten el drawer
-/// Simplifica la implementación del drawer en diferentes screens
 class DrawerScaffold extends StatelessWidget {
-  final Widget body;
   final String title;
+  final Widget body;
   final String currentRoute;
+  final FloatingActionButton? floatingActionButton;
   final List<Widget>? actions;
-  final Widget? floatingActionButton;
-  final FloatingActionButtonLocation? floatingActionButtonLocation;
-  final bool showAppBar;
-  final Color? backgroundColor;
 
   const DrawerScaffold({
     super.key,
-    required this.body,
     required this.title,
+    required this.body,
     required this.currentRoute,
-    this.actions,
     this.floatingActionButton,
-    this.floatingActionButtonLocation,
-    this.showAppBar = true,
-    this.backgroundColor,
+    this.actions,
   });
 
   @override
   Widget build(BuildContext context) {
-    return CollapsibleDrawer(
-      currentRoute: currentRoute,
-      child: Scaffold(
-        backgroundColor: backgroundColor ?? const Color(0xFFF5F3E8),
-        appBar: showAppBar
-            ? AppBar(
-          title: Text(
-            title,
-            style: const TextStyle(
-              fontWeight: FontWeight.bold,
-              letterSpacing: 1.0,
-            ),
-          ),
-          backgroundColor: const Color(0xFF2B5F8C),
-          foregroundColor: Colors.white,
-          elevation: 2,
-          actions: actions,
-          automaticallyImplyLeading: false, // Remove default back button
-        )
-            : null,
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors: [
-                backgroundColor ?? const Color(0xFFF5F3E8),
-                const Color(0xFFE8E5D6),
-              ],
-            ),
-          ),
-          child: SafeArea(
-            child: Padding(
-              padding: EdgeInsets.only(
-                left: 16,
-                right: 16,
-                top: showAppBar ? 16 : 70, // Space for menu button if no AppBar
-                bottom: 16,
-              ),
-              child: body,
-            ),
-          ),
-        ),
-        floatingActionButton: floatingActionButton,
-        floatingActionButtonLocation: floatingActionButtonLocation,
+    return Scaffold(
+      appBar: AppBar(
+        title: Text(title),
+        backgroundColor: const Color(0xFF2B5F8C),
+        foregroundColor: Colors.white,
+        elevation: 0,
       ),
+      drawer: _buildDrawer(context),
+      body: body,
+      floatingActionButton: floatingActionButton,
     );
   }
-}
 
-/// Ejemplo de cómo usar el DrawerScaffold en otras pantallas
-class ExampleInventoryScreen extends StatefulWidget {
-  const ExampleInventoryScreen({super.key});
+  Widget _buildDrawer(BuildContext context) {
+    final user = AuthService.currentUser;
 
-  @override
-  State<ExampleInventoryScreen> createState() => _ExampleInventoryScreenState();
-}
-
-class _ExampleInventoryScreenState extends State<ExampleInventoryScreen> {
-  @override
-  Widget build(BuildContext context) {
-    return DrawerScaffold(
-      title: 'Inventory',
-      currentRoute: '/inventory',
-      actions: [
-        IconButton(
-          icon: const Icon(Icons.search),
-          onPressed: () {
-            // Implement search functionality
-          },
-        ),
-        IconButton(
-          icon: const Icon(Icons.filter_list),
-          onPressed: () {
-            // Implement filter functionality
-          },
-        ),
-      ],
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // Add new asset
-        },
-        backgroundColor: const Color(0xFF6B8E3D),
-        child: const Icon(Icons.add),
-      ),
-      body: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+    return Drawer(
+      child: ListView(
+        padding: EdgeInsets.zero,
         children: [
-          // Search bar
-          Container(
-            padding: const EdgeInsets.all(16),
-            margin: const EdgeInsets.only(bottom: 16),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(15),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.grey.withOpacity(0.1),
-                  spreadRadius: 1,
-                  blurRadius: 10,
-                ),
-              ],
+          UserAccountsDrawerHeader(
+            decoration: const BoxDecoration(
+              color: Color(0xFF2B5F8C),
             ),
-            child: const Row(
-              children: [
-                Icon(
-                  Icons.search,
+            currentAccountPicture: CircleAvatar(
+              backgroundColor: Colors.white,
+              child: Text(
+                user?.email?.substring(0, 1).toUpperCase() ?? 'U',
+                style: const TextStyle(
+                  fontSize: 24,
                   color: Color(0xFF2B5F8C),
+                  fontWeight: FontWeight.bold,
                 ),
-                SizedBox(width: 12),
-                Expanded(
-                  child: Text(
-                    'Search assets...',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontSize: 16,
-                    ),
-                  ),
-                ),
-                Icon(
-                  Icons.mic,
-                  color: Color(0xFF6B8E3D),
-                ),
-              ],
+              ),
             ),
+            accountName: Text(
+              user?.userMetadata?['full_name'] ?? 'Usuario',
+              style: const TextStyle(fontWeight: FontWeight.bold),
+            ),
+            accountEmail: Text(user?.email ?? ''),
           ),
 
-          // Categories filter
-          SizedBox(
-            height: 50,
-            child: ListView(
-              scrollDirection: Axis.horizontal,
-              children: [
-                _buildCategoryChip('All', true),
-                _buildCategoryChip('Electronics', false),
-                _buildCategoryChip('Machinery', false),
-                _buildCategoryChip('Vehicles', false),
-                _buildCategoryChip('Furniture', false),
-              ],
-            ),
+          // Dashboard
+          _buildDrawerItem(
+            context,
+            icon: Icons.dashboard,
+            title: 'Dashboard',
+            route: '/dashboard',
           ),
+
+          const Divider(),
+
+          // Sección de Inventario
+          _buildDrawerHeader('Inventory'),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.inventory_2,
+            title: 'Productos',
+            route: '/inventory',
+          ),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.location_on,
+            title: 'Ubicaciones',
+            route: '/locations',
+          ),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.qr_code_scanner,
+            title: 'Escanear',
+            route: '/scan',
+          ),
+
+          const Divider(),
+
+          // Sección de Operaciones
+          _buildDrawerHeader('OPERACIONES'),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.swap_horiz,
+            title: 'Transferencias',
+            route: '/transfers',
+          ),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.add_shopping_cart,
+            title: 'Nueva Entrada',
+            route: '/new-entry',
+          ),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.remove_shopping_cart,
+            title: 'Salidas',
+            route: '/exits',
+          ),
+
+          const Divider(),
+
+          // Sección de Assets (si lo usas)
+          _buildDrawerHeader('ACTIVOS'),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.business_center,
+            title: 'Assets',
+            route: '/assets',
+          ),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.build,
+            title: 'Mantenimiento',
+            route: '/maintenance',
+          ),
+
+          const Divider(),
+
+          // Configuración
+          _buildDrawerItem(
+            context,
+            icon: Icons.settings,
+            title: 'Configuración',
+            route: '/settings',
+          ),
+
+          _buildDrawerItem(
+            context,
+            icon: Icons.help,
+            title: 'Ayuda',
+            route: '/help',
+          ),
+
+          const Divider(),
+
+          // Cerrar sesión
+          ListTile(
+            leading: const Icon(Icons.logout, color: Colors.red),
+            title: const Text(
+              'Cerrar Sesión',
+              style: TextStyle(color: Colors.red),
+            ),
+            onTap: () async {
+              final confirm = await showDialog<bool>(
+                context: context,
+                builder: (context) => AlertDialog(
+                  title: const Text('Cerrar Sesión'),
+                  content: const Text('¿Estás seguro de que deseas cerrar sesión?'),
+                  actions: [
+                    TextButton(
+                      onPressed: () => Navigator.pop(context, false),
+                      child: const Text('Cancelar'),
+                    ),
+                    ElevatedButton(
+                      onPressed: () => Navigator.pop(context, true),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.red,
+                        foregroundColor: Colors.white,
+                      ),
+                      child: const Text('Cerrar Sesión'),
+                    ),
+                  ],
+                ),
+              );
+
+              if (confirm == true && context.mounted) {
+                await AuthService.signOut();
+                if (context.mounted) {
+                  Navigator.pushReplacementNamed(context, '/login');
+                }
+              }
+            },
+          ),
+
           const SizedBox(height: 16),
 
-          // Assets list
-          Expanded(
-            child: ListView.builder(
-              itemCount: 5, // Example count
-              itemBuilder: (context, index) {
-                return _buildAssetCard(
-                  name: 'Sample Asset ${index + 1}',
-                  category: 'Electronics',
-                  status: index % 2 == 0 ? 'Active' : 'Maintenance',
-                  assetTag: 'AST-${1000 + index}',
-                );
-              },
+          // Versión
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Text(
+              'M.I.A Tracker v1.6.2',
+              style: TextStyle(
+                fontSize: 12,
+                color: Colors.grey.shade600,
+              ),
+              textAlign: TextAlign.center,
             ),
           ),
         ],
@@ -189,116 +217,54 @@ class _ExampleInventoryScreenState extends State<ExampleInventoryScreen> {
     );
   }
 
-  Widget _buildCategoryChip(String category, bool isSelected) {
+  Widget _buildDrawerHeader(String title) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
+      child: Text(
+        title,
+        style: TextStyle(
+          fontSize: 12,
+          fontWeight: FontWeight.bold,
+          color: Colors.grey.shade600,
+          letterSpacing: 1.2,
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem(
+      BuildContext context, {
+        required IconData icon,
+        required String title,
+        required String route,
+      }) {
+    final isSelected = currentRoute == route;
+
     return Container(
-      margin: const EdgeInsets.only(right: 12),
-      child: FilterChip(
-        label: Text(
-          category,
+      margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+      decoration: BoxDecoration(
+        color: isSelected ? const Color(0xFF6B8E3D).withOpacity(0.1) : null,
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: ListTile(
+        leading: Icon(
+          icon,
+          color: isSelected ? const Color(0xFF6B8E3D) : Colors.grey.shade700,
+        ),
+        title: Text(
+          title,
           style: TextStyle(
-            color: isSelected ? Colors.white : const Color(0xFF2B5F8C),
+            color: isSelected ? const Color(0xFF6B8E3D) : Colors.grey.shade800,
             fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
           ),
         ),
         selected: isSelected,
-        onSelected: (selected) {
-          // Handle category selection
+        onTap: () {
+          Navigator.pop(context);
+          if (!isSelected) {
+            Navigator.pushReplacementNamed(context, route);
+          }
         },
-        backgroundColor: Colors.white,
-        selectedColor: const Color(0xFF6B8E3D),
-        checkmarkColor: Colors.white,
-        side: BorderSide(
-          color: isSelected ? const Color(0xFF6B8E3D) : Colors.grey.withOpacity(0.3),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildAssetCard({
-    required String name,
-    required String category,
-    required String status,
-    required String assetTag,
-  }) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 12),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 10,
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Container(
-            width: 50,
-            height: 50,
-            decoration: BoxDecoration(
-              color: const Color(0xFF2B5F8C).withOpacity(0.1),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.laptop_mac,
-              color: Color(0xFF2B5F8C),
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  name,
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                    color: Color(0xFF2B5F8C),
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  '$category • $assetTag',
-                  style: const TextStyle(
-                    fontSize: 14,
-                    color: Colors.grey,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-            decoration: BoxDecoration(
-              color: status == 'Active'
-                  ? const Color(0xFF6B8E3D).withOpacity(0.1)
-                  : Colors.orange.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(20),
-            ),
-            child: Text(
-              status,
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.bold,
-                color: status == 'Active'
-                    ? const Color(0xFF6B8E3D)
-                    : Colors.orange,
-              ),
-            ),
-          ),
-          const SizedBox(width: 8),
-          IconButton(
-            icon: const Icon(Icons.more_vert),
-            onPressed: () {
-              // Show options menu
-            },
-          ),
-        ],
       ),
     );
   }
