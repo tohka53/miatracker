@@ -1,204 +1,182 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
-    <dict>
-        <key>CFBundleDevelopmentRegion</key>
-        <string>$(DEVELOPMENT_LANGUAGE)</string>
-        <key>CFBundleDisplayName</key>
-        <string>M.I.A Tracker</string>
-        <key>CFBundleExecutable</key>
-        <string>$(EXECUTABLE_NAME)</string>
-        <key>CFBundleIdentifier</key>
-        <string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
-        <key>CFBundleInfoDictionaryVersion</key>
-        <string>6.0</string>
-        <key>CFBundleName</key>
-        <string>miatracker</string>
-        <key>CFBundlePackageType</key>
-        <string>APPL</string>
-        <key>CFBundleShortVersionString</key>
-        <string>$(FLUTTER_BUILD_NAME)</string>
-        <key>CFBundleSignature</key>
-        <string>????</string>
-        <key>CFBundleVersion</key>
-        <string>$(FLUTTER_BUILD_NUMBER)</string>
-        <key>LSRequiresIPhoneOS</key>
-        <true/>
-        <key>UILaunchStoryboardName</key>
-        <string>LaunchScreen</string>
-        <key>UIMainStoryboardFile</key>
-        <string>Main</string>
-        <key>UISupportedInterfaceOrientations</key>
-        <array>
-            <string>UIInterfaceOrientationPortrait</string>
-            <string>UIInterfaceOrientationLandscapeLeft</string>
-            <string>UIInterfaceOrientationLandscapeRight</string>
-        </array>
-        <key>UISupportedInterfaceOrientations~ipad</key>
-        <array>
-            <string>UIInterfaceOrientationPortrait</string>
-            <string>UIInterfaceOrientationPortraitUpsideDown</string>
-            <string>UIInterfaceOrientationLandscapeLeft</string>
-            <string>UIInterfaceOrientationLandscapeRight</string>
-        </array>
-        <key>CADisableMinimumFrameDurationOnPhone</key>
-        <true/>
-        <key>UIApplicationSupportsIndirectInputEvents</key>
-        <true/>
-
-        <!-- Permisos críticos para funcionalidad de imágenes -->
-        <key>NSCameraUsageDescription</key>
-        <string>M.I.A Tracker necesita acceso a la cámara para tomar fotos de productos en el inventario y escanear códigos QR/barras</string>
-
-        <key>NSPhotoLibraryUsageDescription</key>
-        <string>M.I.A Tracker necesita acceso a la galería de fotos para seleccionar imágenes de productos del inventario</string>
-
-        <key>NSPhotoLibraryAddUsageDescription</key>
-        <string>M.I.A Tracker puede guardar imágenes de productos en tu galería para respaldo</string>
-
-        <!-- Soporte para formatos HEIC/HEIF en iOS -->
-        <key>UTImportedTypeDeclarations</key>
-        <array>
-            <dict>
-                <key>UTTypeIdentifier</key>
-                <string>public.heic</string>
-                <key>UTTypeDescription</key>
-                <string>High Efficiency Image Format</string>
-                <key>UTTypeConformsTo</key>
-                <array>
-                    <string>public.image</string>
-                </array>
-                <key>UTTypeTagSpecification</key>
-                <dict>
-                    <key>public.filename-extension</key>
-                    <array>
-                        <string>heic</string>
-                        <string>HEIC</string>
-                    </array>
-                    <key>public.mime-type</key>
-                    <array>
-                        <string>image/heic</string>
-                    </array>
-                </dict>
-            </dict>
-            <dict>
-                <key>UTTypeIdentifier</key>
-                <string>public.heif</string>
-                <key>UTTypeDescription</key>
-                <string>High Efficiency Image Format</string>
-                <key>UTTypeConformsTo</key>
-                <array>
-                    <string>public.image</string>
-                </array>
-                <key>UTTypeTagSpecification</key>
-                <dict>
-                    <key>public.filename-extension</key>
-                    <array>
-                        <string>heif</string>
-                        <string>HEIF</string>
-                    </array>
-                    <key>public.mime-type</key>
-                    <array>
-                        <string>image/heif</string>
-                    </array>
-                </dict>
-            </dict>
-        </array>
-
-        <!-- Configuración de Document Types para mejor manejo de archivos -->
-        <key>CFBundleDocumentTypes</key>
-        <array>
-            <dict>
-                <key>CFBundleTypeName</key>
-                <string>Image</string>
-                <key>CFBundleTypeRole</key>
-                <string>Viewer</string>
-                <key>LSItemContentTypes</key>
-                <array>
-                    <string>public.image</string>
-                    <string>public.jpeg</string>
-                    <string>public.png</string>
-                    <string>public.heic</string>
-                    <string>public.heif</string>
-                </array>
-                <key>LSHandlerRank</key>
-                <string>Alternate</string>
-            </dict>
-        </array>
-
-        <!-- URL Schemes para Supabase deep links -->
-        <key>CFBundleURLTypes</key>
-        <array>
-            <dict>
-                <key>CFBundleURLName</key>
-                <string>supabase-auth</string>
-                <key>CFBundleURLSchemes</key>
-                <array>
-                    <string>io.supabase.miatracker</string>
-                </array>
-            </dict>
-        </array>
-
-        <!-- Configuración de red optimizada para Supabase -->
-        <key>NSAppTransportSecurity</key>
-        <dict>
-            <key>NSAllowsArbitraryLoads</key>
-            <false/>
-            <key>NSExceptionDomains</key>
-            <dict>
-                <key>supabase.co</key>
-                <dict>
-                    <key>NSExceptionAllowsInsecureHTTPLoads</key>
-                    <false/>
-                    <key>NSExceptionMinimumTLSVersion</key>
-                    <string>TLSv1.2</string>
-                    <key>NSIncludesSubdomains</key>
-                    <true/>
-                    <key>NSExceptionRequiresForwardSecrecy</key>
-                    <false/>
-                </dict>
-                <key>jayzfkqwaasfibiinkjh.supabase.co</key>
-                <dict>
-                    <key>NSExceptionAllowsInsecureHTTPLoads</key>
-                    <false/>
-                    <key>NSExceptionMinimumTLSVersion</key>
-                    <string>TLSv1.2</string>
-                    <key>NSExceptionRequiresForwardSecrecy</key>
-                    <false/>
-                </dict>
-            </dict>
-        </dict>
-
-        <!-- Configuraciones adicionales para mejor rendimiento -->
-        <key>UIBackgroundModes</key>
-        <array>
-            <string>background-processing</string>
-        </array>
-
-        <!-- Soporte para orientación de interfaz -->
-        <key>UIInterfaceOrientationPortrait</key>
-        <true/>
-        <key>UIInterfaceOrientationLandscapeLeft</key>
-        <false/>
-        <key>UIInterfaceOrientationLandscapeRight</key>
-        <false/>
-
-        <!-- Configuración de status bar -->
-        <key>UIStatusBarStyle</key>
-        <string>UIStatusBarStyleDefault</string>
-        <key>UIViewControllerBasedStatusBarAppearance</key>
-        <true/>
-
-        <!-- Optimizaciones de memoria y rendimiento -->
-        <key>UIApplicationExitsOnSuspend</key>
-        <false/>
-        <key>UIRequiresFullScreen</key>
-        <false/>
-
-        <!-- Configuración para manejo de archivos temporales -->
-        <key>LSSupportsOpeningDocumentsInPlace</key>
-        <true/>
-        <key>UISupportsDocumentBrowser</key>
-        <false/>
-    </dict>
+<dict>
+	<key>CADisableMinimumFrameDurationOnPhone</key>
+	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>$(DEVELOPMENT_LANGUAGE)</string>
+	<key>CFBundleDisplayName</key>
+	<string>M.I.A Tracker</string>
+	<key>CFBundleDocumentTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeName</key>
+			<string>Image</string>
+			<key>CFBundleTypeRole</key>
+			<string>Viewer</string>
+			<key>LSHandlerRank</key>
+			<string>Alternate</string>
+			<key>LSItemContentTypes</key>
+			<array>
+				<string>public.image</string>
+				<string>public.jpeg</string>
+				<string>public.png</string>
+				<string>public.heic</string>
+				<string>public.heif</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleExecutable</key>
+	<string>$(EXECUTABLE_NAME)</string>
+	<key>CFBundleIdentifier</key>
+	<string>$(PRODUCT_BUNDLE_IDENTIFIER)</string>
+	<key>CFBundleInfoDictionaryVersion</key>
+	<string>6.0</string>
+	<key>CFBundleName</key>
+	<string>miatracker</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>$(FLUTTER_BUILD_NAME)</string>
+	<key>CFBundleSignature</key>
+	<string>????</string>
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleURLName</key>
+			<string>supabase-auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>io.supabase.miatracker</string>
+			</array>
+		</dict>
+	</array>
+	<key>CFBundleVersion</key>
+	<string>$(FLUTTER_BUILD_NUMBER)</string>
+	<key>LSRequiresIPhoneOS</key>
+	<true/>
+	<key>LSSupportsOpeningDocumentsInPlace</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>jayzfkqwaasfibiinkjh.supabase.co</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+			</dict>
+			<key>supabase.co</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<false/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+	<key>NSCameraUsageDescription</key>
+	<string>M.I.A Tracker necesita acceso a la cámara para tomar fotos de productos en el inventario y escanear códigos QR/barras</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>M.I.A Tracker puede guardar imágenes de productos en tu galería para respaldo</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>M.I.A Tracker necesita acceso a la galería de fotos para seleccionar imágenes de productos del inventario</string>
+	<key>UIApplicationExitsOnSuspend</key>
+	<false/>
+	<key>UIApplicationSupportsIndirectInputEvents</key>
+	<true/>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>background-processing</string>
+	</array>
+	<key>UIInterfaceOrientationLandscapeLeft</key>
+	<false/>
+	<key>UIInterfaceOrientationLandscapeRight</key>
+	<false/>
+	<key>UIInterfaceOrientationPortrait</key>
+	<true/>
+	<key>UILaunchStoryboardName</key>
+	<string>LaunchScreen</string>
+	<key>UIMainStoryboardFile</key>
+	<string>Main</string>
+	<key>UIRequiresFullScreen</key>
+	<false/>
+	<key>UIStatusBarStyle</key>
+	<string>UIStatusBarStyleDefault</string>
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+	<key>UISupportsDocumentBrowser</key>
+	<false/>
+	<key>UIViewControllerBasedStatusBarAppearance</key>
+	<true/>
+	<key>UTImportedTypeDeclarations</key>
+	<array>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>High Efficiency Image Format</string>
+			<key>UTTypeIdentifier</key>
+			<string>public.heic</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>heic</string>
+					<string>HEIC</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>image/heic</string>
+				</array>
+			</dict>
+		</dict>
+		<dict>
+			<key>UTTypeConformsTo</key>
+			<array>
+				<string>public.image</string>
+			</array>
+			<key>UTTypeDescription</key>
+			<string>High Efficiency Image Format</string>
+			<key>UTTypeIdentifier</key>
+			<string>public.heif</string>
+			<key>UTTypeTagSpecification</key>
+			<dict>
+				<key>public.filename-extension</key>
+				<array>
+					<string>heif</string>
+					<string>HEIF</string>
+				</array>
+				<key>public.mime-type</key>
+				<array>
+					<string>image/heif</string>
+				</array>
+			</dict>
+		</dict>
+	</array>
+</dict>
 </plist>
