@@ -87,7 +87,7 @@
     },
     {
       "name": "characters",
-      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/characters-1.4.0",
+      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/characters-1.4.1",
       "packageUri": "lib/",
       "languageVersion": "3.4"
     },
@@ -183,9 +183,9 @@
     },
     {
       "name": "flutter",
-      "rootUri": "file:///Users/miguelcabrera/development/flutter/packages/flutter",
+      "rootUri": "file:///Users/Developer/flutter/packages/flutter",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.10"
     },
     {
       "name": "flutter_cache_manager",
@@ -219,15 +219,15 @@
     },
     {
       "name": "flutter_test",
-      "rootUri": "file:///Users/miguelcabrera/development/flutter/packages/flutter_test",
+      "rootUri": "file:///Users/Developer/flutter/packages/flutter_test",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.10"
     },
     {
       "name": "flutter_web_plugins",
-      "rootUri": "file:///Users/miguelcabrera/development/flutter/packages/flutter_web_plugins",
+      "rootUri": "file:///Users/Developer/flutter/packages/flutter_web_plugins",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.10"
     },
     {
       "name": "functions_client",
@@ -363,19 +363,19 @@
     },
     {
       "name": "matcher",
-      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/matcher-0.12.17",
+      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/matcher-0.12.19",
       "packageUri": "lib/",
-      "languageVersion": "3.4"
+      "languageVersion": "3.7"
     },
     {
       "name": "material_color_utilities",
-      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/material_color_utilities-0.11.1",
+      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/material_color_utilities-0.13.0",
       "packageUri": "lib/",
-      "languageVersion": "2.17"
+      "languageVersion": "3.5"
     },
     {
       "name": "meta",
-      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/meta-1.17.0",
+      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/meta-1.18.0",
       "packageUri": "lib/",
       "languageVersion": "3.5"
     },
@@ -639,9 +639,9 @@
     },
     {
       "name": "sky_engine",
-      "rootUri": "file:///Users/miguelcabrera/development/flutter/bin/cache/pkg/sky_engine",
+      "rootUri": "file:///Users/Developer/flutter/bin/cache/pkg/sky_engine",
       "packageUri": "lib/",
-      "languageVersion": "3.8"
+      "languageVersion": "3.10"
     },
     {
       "name": "source_span",
@@ -735,9 +735,9 @@
     },
     {
       "name": "test_api",
-      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/test_api-0.7.7",
+      "rootUri": "file:///Users/miguelcabrera/.pub-cache/hosted/pub.dev/test_api-0.7.11",
       "packageUri": "lib/",
-      "languageVersion": "3.5"
+      "languageVersion": "3.7"
     },
     {
       "name": "typed_data",
@@ -861,8 +861,8 @@
     }
   ],
   "generator": "pub",
-  "generatorVersion": "3.10.0",
-  "flutterRoot": "file:///Users/miguelcabrera/development/flutter",
-  "flutterVersion": "3.38.2",
+  "generatorVersion": "3.12.2",
+  "flutterRoot": "file:///Users/Developer/flutter",
+  "flutterVersion": "3.44.4",
   "pubCache": "file:///Users/miguelcabrera/.pub-cache"
 }
