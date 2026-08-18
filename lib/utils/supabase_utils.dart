@@ -119,21 +119,21 @@ class SupabaseUtils {
     if (status == null) return 'Sin estado';
     switch (status.toLowerCase()) {
       case 'active':
-        return 'Activo';
+        return 'Active';
       case 'inactive':
-        return 'Inactivo';
+        return 'Inactive';
       case 'maintenance':
-        return 'En mantenimiento';
+        return 'In maintenance';
       case 'disposed':
-        return 'Dado de baja';
+        return 'Disposed';
       case 'pending':
-        return 'Pendiente';
+        return 'Pending';
       case 'in_progress':
-        return 'En progreso';
+        return 'In progress';
       case 'completed':
-        return 'Completado';
+        return 'Completed';
       case 'cancelled':
-        return 'Cancelado';
+        return 'Cancelled';
       default:
         return status;
     }

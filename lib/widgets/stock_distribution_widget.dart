@@ -113,7 +113,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
               const SizedBox(width: 8),
               const Expanded(
                 child: Text(
-                  'Distribución de Stock',
+                  'Stock Distribution',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -141,7 +141,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
                 child: OutlinedButton.icon(
                   onPressed: _distributeEqually,
                   icon: const Icon(Icons.compare_arrows, size: 16),
-                  label: const Text('Distribuir Igual', style: TextStyle(fontSize: 12)),
+                  label: const Text('Distribute Evenly', style: TextStyle(fontSize: 12)),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: const Color(0xFF6B8E3D),
                   ),
@@ -186,7 +186,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
                     Expanded(
                       child: Text(
                         'Distribuido: $_totalDistributed / ${widget.totalStock}\n'
-                            'Faltan: ${widget.totalStock - _totalDistributed}',
+                            'Remaining: ${widget.totalStock - _totalDistributed}',
                         style: TextStyle(
                           fontSize: 12,
                           color: Colors.orange.shade900,
@@ -215,7 +215,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
                     SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '✓ Distribución válida',
+                        '✓ Valid distribution',
                         style: TextStyle(
                           fontSize: 12,
                           color: Color(0xFF6B8E3D),
@@ -244,7 +244,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: [
             Text(
-              'Total: ${widget.totalStock} unidades',
+              'Total: ${widget.totalStock} units',
               style: const TextStyle(
                 fontSize: 12,
                 fontWeight: FontWeight.bold,
@@ -283,7 +283,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
 
   Widget _buildLocationItem(Map<String, dynamic> location) {
     final locationId = location['id_locat'] as int;
-    final locationName = location['lugar_fisico'] ?? 'Sin nombre';
+    final locationName = location['lugar_fisico'] ?? 'No name';
     final controller = _controllers[locationId];
 
     return Padding(
@@ -389,7 +389,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
           Icon(Icons.location_off, size: 48, color: Colors.grey.shade400),
           const SizedBox(height: 12),
           Text(
-            'No hay ubicaciones disponibles',
+            'No locations available',
             style: TextStyle(
               color: Colors.grey.shade600,
               fontWeight: FontWeight.bold,
@@ -414,7 +414,7 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
           children: [
             Icon(Icons.info, color: Color(0xFF2B5F8C)),
             SizedBox(width: 8),
-            Text('Distribución de Stock'),
+            Text('Stock Distribution'),
           ],
         ),
         content: const SingleChildScrollView(
@@ -423,13 +423,13 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
             mainAxisSize: MainAxisSize.min,
             children: [
               Text(
-                '¿Qué es la distribución de stock?',
+                'What is stock distribution?',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               SizedBox(height: 8),
               Text(
-                'Te permite especificar cuántas unidades del producto estarán '
-                    'disponibles en cada ubicación o sucursal.',
+                'It lets you specify how many units of the product will be '
+                    'available at each location or branch.',
                 style: TextStyle(fontSize: 14),
               ),
               SizedBox(height: 16),
@@ -439,15 +439,15 @@ class _StockDistributionWidgetState extends State<StockDistributionWidget> {
               ),
               SizedBox(height: 8),
               Text(
-                '• Total: 100 unidades\n'
-                    '• Almacén Central: 60 unidades\n'
+                '• Total: 100 units\n'
+                    '• Central Warehouse: 60 units\n'
                     '• Sucursal Norte: 25 unidades\n'
                     '• Sucursal Sur: 15 unidades',
                 style: TextStyle(fontSize: 12),
               ),
               SizedBox(height: 16),
               Text(
-                '✓ La suma debe ser igual al total',
+                '✓ The sum must equal the total',
                 style: TextStyle(
                   fontSize: 12,
                   color: Color(0xFF6B8E3D),

@@ -128,7 +128,7 @@ class ProductCardWithRestock extends StatelessWidget {
                         // Precio
                         if (precio > 0)
                           Text(
-                            'Q ${precio.toStringAsFixed(2)}',
+                            '\$${precio.toStringAsFixed(2)}',
                             style: const TextStyle(
                               fontSize: 15,
                               fontWeight: FontWeight.w600,

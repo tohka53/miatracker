@@ -1,7 +1,5 @@
-import 'dart:io';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:cached_network_image/cached_network_image.dart';
 import '../services/order_service.dart';
 import '../widgets/collapsible_drawer.dart';
 import '../services/cart_service.dart';
@@ -17,7 +15,6 @@ class ShoppingCartScreen extends StatefulWidget {
 
 class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
   final CartService _cartService = CartService();
-  List<Map<String, dynamic>> _inventory = [];
   bool _isLoading = true;
   bool _isProcessingOrder = false;
 
@@ -41,14 +38,11 @@ class _ShoppingCartScreenState extends State<ShoppingCartScreen> {
   Future<void> _loadInventory() async {
     try {
       setState(() => _isLoading = true);
-      final inventory = await InventoryService.getInventory();
+      // Consulta liviana (una sola query, sin N+1) para no trabar con mucho inventario
+      final inventory = await InventoryService.getInventoryForCart();
 
       if (mounted) {
-        setState(() {
-          _inventory = inventory;
-          _isLoading = false;
-        });
-
+        setState(() => _isLoading = false);
         // Update cart service with current inventory
         _cartService.updateInventory(inventory);
       }

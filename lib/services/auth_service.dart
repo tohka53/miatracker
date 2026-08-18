@@ -1,5 +1,5 @@
+import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
-import '../config/supabase_config.dart';
 
 class AuthService {
   static final SupabaseClient _supabase = Supabase.instance.client;
@@ -65,7 +65,9 @@ class AuthService {
     try {
       await _supabase.auth.resetPasswordForEmail(
         email,
-        redirectTo: 'io.supabase.miatracker://reset-password',
+        redirectTo: kIsWeb
+            ? 'https://www.miatracker.com/app/#/reset-password'
+            : 'io.supabase.miatracker://reset-password',
       );
     } on AuthException catch (e) {
       throw AuthException(e.message);

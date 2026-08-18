@@ -343,9 +343,9 @@ class SupplyMarketplaceService {
 
   /// Formatear precio
   static String formatPrice(dynamic price) {
-    if (price == null) return 'Q 0.00';
+    if (price == null) return '\$0.00';
     final double priceValue = price is double ? price : double.tryParse(price.toString()) ?? 0.0;
-    return 'Q ${priceValue.toStringAsFixed(2)}';
+    return '\$${priceValue.toStringAsFixed(2)}';
   }
 
   /// Verificar si un producto está en mi inventario
@@ -541,15 +541,15 @@ class SupplyMarketplaceService {
   static String getOrderStatusText(String status) {
     switch (status.toLowerCase()) {
       case 'pending':
-        return 'Pendiente';
+        return 'Pending';
       case 'confirmed':
-        return 'Confirmado';
+        return 'Confirmed';
       case 'shipped':
-        return 'Enviado';
+        return 'Shipped';
       case 'delivered':
-        return 'Entregado';
+        return 'Delivered';
       case 'cancelled':
-        return 'Cancelado';
+        return 'Cancelled';
       default:
         return status;
     }

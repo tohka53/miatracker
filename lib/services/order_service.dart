@@ -934,11 +934,11 @@ class Order {
   String get formattedStatus {
     switch (status) {
       case 'pending':
-        return 'Pendiente';
+        return 'Pending';
       case 'completed':
-        return 'Completada';
+        return 'Completed';
       case 'cancelled':
-        return 'Cancelada';
+        return 'Cancelled';
       default:
         return status;
     }

@@ -8,7 +8,6 @@ import 'package:supabase_flutter/supabase_flutter.dart';
 import 'config/supabase_config.dart';
 
 // Services
-import 'services/auth_service.dart';
 
 // Screens - Auth
 import 'screens/login_screen.dart';
@@ -29,6 +28,11 @@ import 'screens/suppliers/supplier_dashboard.dart';
 import 'screens/suppliers/products_without_supplier_screen.dart';
 import 'screens/restock_management_screen.dart';
 
+// Screens - Notifications & Restock
+import 'screens/notifications_screen.dart';
+import 'screens/restock_requests_screen.dart';
+import 'screens/rejected_requests_screen.dart';
+
 // Screens - Reports
 import 'screens/reports/inventory_reports_screen.dart';
 
@@ -43,6 +47,9 @@ import 'screens/settings/company_settings_screen.dart';
 // Widgets
 import 'widgets/auth_wrapper.dart';
 import 'widgets/mia_logo.dart';
+
+// Utils
+import 'utils/mia_links.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -64,6 +71,30 @@ void main() async {
   }
 
   runApp(const MyApp());
+}
+
+/// Deep link con el que se ABRIÓ la app (botón de un correo -> App Link en
+/// Android / Universal Link en iOS).
+///
+/// En web el destino se puede leer de `Uri.base.fragment`, pero en móvil la
+/// ruta llega por `onGenerateRoute` durante el arranque. El splash termina
+/// ~3 s después y hace `pushReplacement`, que reemplaza la ruta de ARRIBA:
+/// sin guardar el destino, la pantalla del enlace se borraba sola.
+class PendingDeepLink {
+  static ({String route, Map<String, String> params})? _value;
+  static bool _consumed = false;
+
+  static void offer(({String route, Map<String, String> params}) link) {
+    if (_consumed) return; // ya arrancó: es navegación normal, no un deep link
+    _value = link;
+  }
+
+  static ({String route, Map<String, String> params})? consume() {
+    _consumed = true;
+    final link = _value;
+    _value = null;
+    return link;
+  }
 }
 
 class MyApp extends StatelessWidget {
@@ -133,7 +164,12 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  Map<String, WidgetBuilder> _buildRoutes() {
+  /// ¿Existe esa ruta en el mapa? Se usa antes de navegar a un destino que
+  /// viene de fuera (un enlace de correo viejo o con typo no debe reventar
+  /// la app con "Could not find a generator for route").
+  static bool routeExists(String route) => _buildRoutes().containsKey(route);
+
+  static Map<String, WidgetBuilder> _buildRoutes() {
     return {
       // Auth Routes
       '/auth': (context) => const AuthWrapper(),
@@ -168,6 +204,11 @@ class MyApp extends StatelessWidget {
       '/company-settings': (context) => const CompanySettingsScreen(),
       '/restock-management': (context) => const RestockManagementScreen(),
       '/qr-complete-order': (context) => const QRCompleteOrderScreen(), // 🔥 NUEVO
+
+      // Notifications & Restock Routes
+      '/notifications': (context) => const NotificationsScreen(),
+      '/restock-requests': (context) => const RestockRequestsScreen(),
+      '/rejected-requests': (context) => const RejectedRequestsScreen(),
     };
   }
 
@@ -189,6 +230,32 @@ class MyApp extends StatelessWidget {
         builder: (context) => const ResetPasswordScreen(),
         settings: settings,
       );
+    }
+
+    // Enlaces que vienen de los correos.
+    //
+    // Los botones apuntan a
+    //   https://www.miatracker.com/app/#/restock-management?request=12
+    // y esa URL llega aquí de tres formas según el origen:
+    //   - web: '/restock-management?request=12' (hash strategy)
+    //   - Android App Link / iOS Universal Link: con el path completo, /app incluido
+    // MiaLinks.parseRoute normaliza las tres.
+    //
+    // Sin esto, un nombre de ruta con query ('?request=12') no coincide con el
+    // mapa `routes` (que es de coincidencia exacta) y la app se queda en blanco.
+    final parsed = MiaLinks.parseRoute(settings.name);
+    if (parsed != null) {
+      final builder = _buildRoutes()[parsed.route];
+      if (builder != null) {
+        PendingDeepLink.offer(parsed);
+        return MaterialPageRoute(
+          builder: builder,
+          settings: RouteSettings(
+            name: parsed.route,
+            arguments: parsed.params.isEmpty ? null : parsed.params,
+          ),
+        );
+      }
     }
 
     return null;
@@ -259,18 +326,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
       await Future.delayed(const Duration(seconds: 1));
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-            transitionDuration: const Duration(milliseconds: 500),
-          ),
-        );
-      }
+      if (mounted) _goToNextScreen();
     } catch (e) {
       setState(() {
         _hasError = true;
@@ -281,19 +337,38 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
 
       await Future.delayed(const Duration(seconds: 1));
 
-      if (mounted) {
-        Navigator.pushReplacement(
-          context,
-          PageRouteBuilder(
-            pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              return FadeTransition(opacity: animation, child: child);
-            },
-            transitionDuration: const Duration(milliseconds: 500),
-          ),
-        );
-      }
+      if (mounted) _goToNextScreen();
     }
+  }
+
+  /// Sale del splash.
+  ///
+  /// Si la app se abrió desde el botón de un correo, `onGenerateRoute` ya
+  /// empujó esa pantalla durante el arranque y está ARRIBA del splash. En ese
+  /// caso no hay que navegar: basta con no reemplazar la ruta de arriba, que es
+  /// justo lo que hacía `pushReplacement` (borraba la pantalla del enlace a los
+  /// ~3 s). Si no hay sesión sí se reemplaza, para mandar al login.
+  void _goToNextScreen() {
+    final pending = PendingDeepLink.consume();
+    final hasSession = Supabase.instance.client.auth.currentSession != null;
+
+    if (pending != null && hasSession && MyApp.routeExists(pending.route)) {
+      if (kDebugMode) {
+        print('🔗 Deep link de arranque: ${pending.route} ${pending.params}');
+      }
+      return; // la pantalla del enlace ya está en pantalla
+    }
+
+    Navigator.pushReplacement(
+      context,
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(opacity: animation, child: child);
+        },
+        transitionDuration: const Duration(milliseconds: 500),
+      ),
+    );
   }
 
   Future<void> _checkForDeepLinks() async {

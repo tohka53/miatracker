@@ -416,13 +416,13 @@ class TransferService {
   static String getTransferStatusText(String? status) {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return 'Pendiente';
+        return 'Pending';
       case 'in_transit':
-        return 'En Tránsito';
+        return 'In Transit';
       case 'completed':
-        return 'Completada';
+        return 'Completed';
       case 'cancelled':
-        return 'Cancelada';
+        return 'Cancelled';
       default:
         return 'Desconocido';
     }

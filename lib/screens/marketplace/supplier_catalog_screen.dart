@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../services/supply_marketplace_service.dart';
-import '../../widgets/collapsible_drawer.dart';
 
 /// Pantalla del Catálogo de un Proveedor - ⚡ VERSIÓN CORREGIDA
 class SupplierCatalogScreen extends StatefulWidget {
@@ -299,7 +298,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
                   ),
                   const SizedBox(height: 4),
                   Text(
-                    'Q ${price.toStringAsFixed(2)}',
+                    '\$${price.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -387,7 +386,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
 
                 // Precio
                 Text(
-                  'Q ${price.toStringAsFixed(2)}',
+                  '\$${price.toStringAsFixed(2)}',
                   style: const TextStyle(
                     fontSize: 28,
                     fontWeight: FontWeight.bold,

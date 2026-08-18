@@ -82,7 +82,7 @@ class _CompanyInfoWidgetState extends State<CompanyInfoWidget> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      _companyInfo!['company_name'] ?? 'Sin nombre',
+                      _companyInfo!['company_name'] ?? 'No name',
                       style: const TextStyle(
                         fontSize: 16,
                         fontWeight: FontWeight.bold,
@@ -142,7 +142,7 @@ class _CompanyInfoWidgetState extends State<CompanyInfoWidget> {
             Icon(Icons.location_on, size: 14, color: Color(0xFF6B8E3D)),
             SizedBox(width: 4),
             Text(
-              'Dirección',
+              'Address',
               style: TextStyle(
                 fontSize: 11,
                 fontWeight: FontWeight.bold,
@@ -198,7 +198,7 @@ class _CompanyBadgeState extends State<CompanyBadge> {
     }
 
     return Tooltip(
-      message: _companyInfo!['company_name'] ?? 'Compañía',
+      message: _companyInfo!['company_name'] ?? 'Company',
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
@@ -211,7 +211,7 @@ class _CompanyBadgeState extends State<CompanyBadge> {
             const Icon(Icons.business, size: 14, color: Colors.white),
             const SizedBox(width: 6),
             Text(
-              _companyInfo!['company_name'] ?? 'Compañía',
+              _companyInfo!['company_name'] ?? 'Company',
               style: const TextStyle(
                 color: Colors.white,
                 fontSize: 12,
@@ -312,7 +312,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Información actualizada exitosamente'),
+            content: Text('Information updated successfully'),
             backgroundColor: Color(0xFF6B8E3D),
           ),
         );
@@ -331,7 +331,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Configuración de Compañía'),
+        title: const Text('Company Settings'),
         backgroundColor: const Color(0xFF2B5F8C),
         foregroundColor: Colors.white,
       ),
@@ -353,7 +353,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
         backgroundColor: const Color(0xFF6B8E3D),
         foregroundColor: Colors.white,
         icon: const Icon(Icons.save),
-        label: const Text('Guardar Cambios'),
+        label: const Text('Save Changes'),
       ),
     );
   }
@@ -366,7 +366,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Información General',
+              'General Information',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -377,7 +377,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
             TextField(
               controller: _nameController,
               decoration: const InputDecoration(
-                labelText: 'Nombre de la Compañía',
+                labelText: 'Company Name',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.business),
               ),
@@ -408,7 +408,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                   child: TextField(
                     controller: _countryController,
                     decoration: const InputDecoration(
-                      labelText: 'País',
+                      labelText: 'Country',
                       border: OutlineInputBorder(),
                     ),
                   ),
@@ -419,7 +419,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
             TextField(
               controller: _postalCodeController,
               decoration: const InputDecoration(
-                labelText: 'Código Postal',
+                labelText: 'Postal Code',
                 border: OutlineInputBorder(),
                 prefixIcon: Icon(Icons.mail),
               ),
@@ -440,7 +440,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
             Row(
               children: [
                 const Text(
-                  'Usuarios',
+                  'Users',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -481,7 +481,7 @@ class _CompanySettingsScreenState extends State<CompanySettingsScreen> {
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
-                  title: Text(user['full_name'] ?? 'Sin nombre'),
+                  title: Text(user['full_name'] ?? 'No name'),
                   subtitle: Text(user['email'] ?? 'Sin email'),
                   trailing: Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),

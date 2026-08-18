@@ -4,12 +4,17 @@ import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'auth_service.dart';
 import 'email_service.dart';
-import 'in_app_notification_service.dart';
 
 /// Servicio para manejar alertas de stock bajo
 /// Envía emails y notificaciones push cuando un producto alcanza su nivel de alerta
 class LowStockAlertService {
   static final SupabaseClient _supabase = AuthService.client;
+
+  /// 🚫 Interruptor: envío automático de correos de stock bajo.
+  /// Puesto en false para evitar envíos masivos. Cambia a true para reactivar.
+  static bool autoAlertsEnabled = true;
+  /// Tope de correos por corrida (evita avalanchas). Súbelo si quieres más.
+  static int maxAlertsPerRun = 5;
 
   // ========================================================================
   // 🔥 VERIFICAR Y PROCESAR ALERTAS PENDIENTES
@@ -18,6 +23,10 @@ class LowStockAlertService {
   /// Verifica si hay alertas pendientes y las procesa
   /// Este método debe llamarse periódicamente o al iniciar la app
   static Future<void> processPendingAlerts() async {
+    if (!autoAlertsEnabled) {
+      if (kDebugMode) print('🚫 Alertas de stock bajo desactivadas (autoAlertsEnabled=false)');
+      return;
+    }
     try {
       if (kDebugMode) {
         print('═══════════════════════════════════════════════');
@@ -59,7 +68,7 @@ class LowStockAlertService {
       }
 
       // Procesar cada alerta
-      for (var alert in alerts) {
+      for (var alert in alerts.take(maxAlertsPerRun)) {
         await _processSingleAlert(alert, companyId);
       }
 
@@ -334,7 +343,7 @@ class LowStockAlertService {
                             <table role="presentation" style="width: 100%; margin-top: 30px;">
                                 <tr>
                                     <td align="center">
-                                        <a href="miatracker://inventory" style="display: inline-block; padding: 16px 32px; background-color: #2563EB; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
+                                        <a href="https://www.miatracker.com/app/#/inventory" style="display: inline-block; padding: 16px 32px; background-color: #2563EB; color: #ffffff; text-decoration: none; font-weight: 600; font-size: 16px; border-radius: 6px; box-shadow: 0 2px 4px rgba(0,0,0,0.1);">
                                             View Inventory
                                         </a>
                                     </td>

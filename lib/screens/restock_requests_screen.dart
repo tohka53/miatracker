@@ -30,7 +30,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
     });
 
     try {
-      print('🔄 UI: Cargando solicitudes de restock...');
+      print('🔄 UI: Loading restock requests...');
 
       List<Map<String, dynamic>> requests;
 
@@ -47,7 +47,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
           requests = await RestockService.getAllRequests();
       }
 
-      print('✅ UI: Solicitudes cargadas exitosamente: ${requests.length}');
+      print('✅ UI: Requests loaded successfully: ${requests.length}');
 
       setState(() {
         _requests = requests;
@@ -59,7 +59,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
       print('Stack trace: $stackTrace');
 
       setState(() {
-        _errorMessage = 'Error al cargar solicitudes: ${e.toString()}';
+        _errorMessage = 'Error loading requests: ${e.toString()}';
         _isLoading = false;
       });
 
@@ -71,7 +71,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
             backgroundColor: Colors.red,
             duration: Duration(seconds: 5),
             action: SnackBarAction(
-              label: 'Reintentar',
+              label: 'Retry',
               textColor: Colors.white,
               onPressed: _loadRequests,
             ),
@@ -90,7 +90,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Solicitudes de Restock'),
+        title: const Text('Restock Requests'),
         actions: [
           IconButton(
             icon: const Icon(Icons.refresh),
@@ -113,10 +113,10 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
       floatingActionButton: FloatingActionButton(
         onPressed: () {
           // TODO: Navegar a pantalla de crear solicitud
-          print('Crear nueva solicitud');
+          print('Create new request');
         },
         child: const Icon(Icons.add),
-        tooltip: 'Nueva Solicitud',
+        tooltip: 'New Request',
       ),
     );
   }
@@ -128,11 +128,11 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
         scrollDirection: Axis.horizontal,
         child: Row(
           children: [
-            _buildFilterChip('Todas', 'all'),
+            _buildFilterChip('All', 'all'),
             const SizedBox(width: 8),
-            _buildFilterChip('Pendientes', 'pending'),
+            _buildFilterChip('Pending', 'pending'),
             const SizedBox(width: 8),
-            _buildFilterChip('Aprobadas', 'approved'),
+            _buildFilterChip('Approved', 'approved'),
           ],
         ),
       ),
@@ -168,7 +168,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
             CircularProgressIndicator(),
             const SizedBox(height: 16),
             Text(
-              'Cargando solicitudes...',
+              'Loading requests...',
               style: TextStyle(color: Colors.grey[600]),
             ),
           ],
@@ -191,7 +191,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
               ),
               const SizedBox(height: 16),
               Text(
-                'Error al cargar',
+                'Error loading',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -208,7 +208,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
               ElevatedButton.icon(
                 onPressed: _loadRequests,
                 icon: const Icon(Icons.refresh),
-                label: const Text('Reintentar'),
+                label: const Text('Retry'),
                 style: ElevatedButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
                     horizontal: 24,
@@ -222,7 +222,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
                   // Mostrar diálogo con ayuda de debugging
                   _showDebuggingHelp();
                 },
-                child: const Text('Ver guía de solución'),
+                child: const Text('View troubleshooting guide'),
               ),
             ],
           ),
@@ -243,7 +243,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
             ),
             const SizedBox(height: 16),
             Text(
-              'No hay solicitudes',
+              'No requests',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -253,18 +253,18 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
             const SizedBox(height: 8),
             Text(
               _selectedFilter == 'all'
-                  ? 'Aún no hay solicitudes de restock'
-                  : 'No hay solicitudes ${_selectedFilter == "pending" ? "pendientes" : "aprobadas"}',
+                  ? 'No restock requests yet'
+                  : 'No ${_selectedFilter == "pending" ? "pending" : "approved"} requests',
               style: TextStyle(color: Colors.grey[600]),
             ),
             const SizedBox(height: 24),
             ElevatedButton.icon(
               onPressed: () {
                 // TODO: Navegar a crear solicitud
-                print('Crear nueva solicitud');
+                print('Create new request');
               },
               icon: const Icon(Icons.add),
-              label: const Text('Crear Solicitud'),
+              label: const Text('Create Request'),
             ),
           ],
         ),
@@ -291,8 +291,8 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
     // Intentar obtener datos del inventario
     final inventario = request['inventario'];
     final nombreProducto = inventario is Map
-        ? (inventario['nombre_producto'] as String? ?? 'Producto sin nombre')
-        : 'Producto sin nombre';
+        ? (inventario['nombre_producto'] as String? ?? 'Unnamed product')
+        : 'Unnamed product';
 
     final cantidad = request['cantidad_solicitada'] as int? ?? 0;
 
@@ -304,7 +304,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
       child: InkWell(
         onTap: () {
           // TODO: Navegar a detalle
-          print('Ver detalle de solicitud ${request['id']}');
+          print('View request detail ${request['id']}');
         },
         child: Padding(
           padding: const EdgeInsets.all(16),
@@ -343,7 +343,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Cantidad: $cantidad unidades',
+                          'Quantity: $cantidad units',
                           style: TextStyle(
                             color: Colors.grey[600],
                             fontSize: 14,
@@ -434,7 +434,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
       final dateTime = DateTime.parse(date.toString());
       return '${dateTime.day}/${dateTime.month}/${dateTime.year}';
     } catch (e) {
-      return 'Fecha no disponible';
+      return 'Date not available';
     }
   }
 
@@ -442,7 +442,7 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Guía de Solución'),
+        title: const Text('Troubleshooting Guide'),
         content: SingleChildScrollView(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -454,12 +454,12 @@ class _RestockRequestsScreenState extends State<RestockRequestsScreen> {
               ),
               const SizedBox(height: 12),
               _buildHelpItem('1', 'Los logs en la consola de Flutter'),
-              _buildHelpItem('2', 'Que RLS esté configurado en Supabase'),
+              _buildHelpItem('2', 'That RLS is configured in Supabase'),
               _buildHelpItem('3', 'Que existan foreign keys correctas'),
               _buildHelpItem('4', 'Tu id_company en la tabla profiles'),
               const SizedBox(height: 12),
               Text(
-                'Revisa el archivo RESTOCK_DEBUGGING_GUIDE.md para más detalles.',
+                'Check the RESTOCK_DEBUGGING_GUIDE.md file for more details.',
                 style: TextStyle(fontSize: 12, color: Colors.grey[600]),
               ),
             ],

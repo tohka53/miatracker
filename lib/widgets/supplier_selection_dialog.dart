@@ -42,7 +42,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
     try {
       final companyId = await InventoryService.getCurrentCompanyId();
       if (companyId == null) {
-        throw Exception('No perteneces a ninguna compañía');
+        throw Exception('You do not belong to any company');
       }
 
       final supabase = AuthService.client;
@@ -60,13 +60,13 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
 
       if (_suppliers.isEmpty) {
         setState(() {
-          _errorMessage = 'No hay proveedores disponibles.\nPor favor crea uno primero.';
+          _errorMessage = 'No suppliers available.\nPlease create one first.';
         });
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'Error al cargar proveedores: $e';
+        _errorMessage = 'Error loading suppliers: $e';
       });
     }
   }
@@ -99,7 +99,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Seleccionar Proveedor',
+                          'Select Supplier',
                           style: TextStyle(
                             color: Colors.white,
                             fontSize: 20,
@@ -109,7 +109,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
                         if (widget.productName != null) ...[
                           SizedBox(height: 4),
                           Text(
-                            'Para: ${widget.productName}',
+                            'For: ${widget.productName}',
                             style: TextStyle(
                               color: Colors.white.withOpacity(0.9),
                               fontSize: 14,
@@ -148,7 +148,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
                         padding: EdgeInsets.all(16),
                         side: BorderSide(color: Colors.grey),
                       ),
-                      child: Text('Cancelar'),
+                      child: Text('Cancel'),
                     ),
                   ),
                   SizedBox(width: 12),
@@ -167,7 +167,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
                         foregroundColor: Colors.white,
                         padding: EdgeInsets.all(16),
                       ),
-                      child: Text('Confirmar'),
+                      child: Text('Confirm'),
                     ),
                   ),
                 ],
@@ -188,7 +188,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
             CircularProgressIndicator(color: Color(0xFF6B8E3D)),
             SizedBox(height: 16),
             Text(
-              'Cargando proveedores...',
+              'Loading suppliers...',
               style: TextStyle(color: Colors.grey[600]),
             ),
           ],
@@ -227,7 +227,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
               ElevatedButton.icon(
                 onPressed: _loadSuppliers,
                 icon: Icon(Icons.refresh),
-                label: Text('Reintentar'),
+                label: Text('Retry'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF6B8E3D),
                   foregroundColor: Colors.white,
@@ -253,7 +253,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
               ),
               SizedBox(height: 16),
               Text(
-                'No hay proveedores',
+                'No suppliers',
                 style: TextStyle(
                   fontSize: 20,
                   fontWeight: FontWeight.bold,
@@ -262,7 +262,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
               ),
               SizedBox(height: 8),
               Text(
-                'Debes crear al menos un proveedor\nantes de continuar',
+                'You must create at least one supplier\nbefore continuing',
                 textAlign: TextAlign.center,
                 style: TextStyle(color: Colors.grey[600]),
               ),
@@ -273,7 +273,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
                   // TODO: Navegar a pantalla de crear proveedor
                 },
                 icon: Icon(Icons.add),
-                label: Text('Crear Proveedor'),
+                label: Text('Create Supplier'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Color(0xFF6B8E3D),
                   foregroundColor: Colors.white,
@@ -339,7 +339,7 @@ class _SupplierSelectionDialogState extends State<SupplierSelectionDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          supplier['name'] ?? 'Sin nombre',
+                          supplier['name'] ?? 'No name',
                           style: TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.bold,

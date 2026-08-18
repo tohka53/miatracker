@@ -3,14 +3,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:cached_network_image/cached_network_image.dart';
-import 'package:image_picker/image_picker.dart';
 
 import '../services/cart_service.dart';
-import '../services/image_service.dart';
 import '../services/inventory_service.dart';
 import '../services/inventory_service_optimized.dart' hide InventoryService; // Nuevo servicio optimizado
 import '../services/profile_service.dart';
-import '../widgets/drawer_scaffold.dart';
 import '../screens/shopping_cart_screen.dart';
 import '../widgets/collapsible_drawer.dart';
 

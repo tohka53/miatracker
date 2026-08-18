@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 import '../services/email_service.dart';
 import '../services/restock_service.dart';
 import '../services/profile_service.dart';
+import '../services/inventory_service.dart';
 import '../widgets/base_screen.dart';
 import '../widgets/supplier_selection_dialog.dart';
 import '../widgets/reject_restock_dialog.dart';
@@ -31,11 +32,74 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
   String? _filterStatus;
   String? _filterPriority;
 
+  /// Solicitud pedida por un deep link de correo (?request=12).
+  int? _focusRequestId;
+  bool _focusHandled = false;
+
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 4, vsync: this);
     _checkAdminAndLoad();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+
+    // Argumentos del enlace del correo:
+    // https://www.miatracker.com/app/#/restock-management?request=12
+    final args = ModalRoute.of(context)?.settings.arguments;
+    if (args is Map && args['request'] != null) {
+      final parsed = int.tryParse(args['request'].toString());
+      if (parsed != null && parsed != _focusRequestId) {
+        _focusRequestId = parsed;
+        _focusHandled = false;
+        _maybeOpenFocusedRequest();
+      }
+    }
+  }
+
+  /// Abre el detalle de la solicitud que venía en el enlace, UNA sola vez y
+  /// solo cuando la lista ya está cargada.
+  ///
+  /// No se consulta `_isLoading` a propósito: en el primer arranque sigue en
+  /// `true` mientras corre `_loadData` (se apaga después, en el `finally` de
+  /// `_checkAdminAndLoad`), así que ese guardia dejaría el enfoque muerto justo
+  /// en el caso que importa. `_allRequests` vacío ya cubre "todavía no cargó".
+  void _maybeOpenFocusedRequest() {
+    if (_focusHandled || _focusRequestId == null) return;
+
+    // Todavía no cargó nada: reintentar en la próxima carga.
+    if (_allRequests.isEmpty) return;
+
+    final match =
+        _allRequests.where((r) => r['id'] == _focusRequestId).toList();
+
+    if (match.isEmpty) {
+      // La lista ya cargó y la solicitud no está (otra compañía, borrada, o el
+      // filtro activo la excluye). Se marca como atendida para que no salte
+      // sola en un refresh posterior, y se avisa en vez de no hacer nada.
+      _focusHandled = true;
+      final missingId = _focusRequestId;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) {
+          _showErrorSnackBar('Request #$missingId is not available here');
+        }
+      });
+      return;
+    }
+
+    _focusHandled = true;
+    final request = match.first;
+
+    // Posicionar la pestaña según el estado de la solicitud.
+    const tabByStatus = {'pending': 0, 'approved': 1, 'completed': 2};
+    _tabController.animateTo(tabByStatus[request['status']] ?? 3);
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _showRequestDetails(request);
+    });
   }
 
   @override
@@ -70,6 +134,7 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
           _allRequests = requests;
           _stats = stats;
         });
+        _maybeOpenFocusedRequest();
       }
     } catch (e) {
       if (mounted) {
@@ -280,12 +345,19 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
             0xFF000000);
 
     final inventario = request['inventario'] as Map<String, dynamic>?;
-    final nombreProducto = inventario?['nombre_producto'] ?? 'Unknown Product';
+    final nombreProducto = (request['nombre_producto'] ??
+            inventario?['nombre_producto'] ??
+            'Unknown Product')
+        .toString();
+    final imagenProducto = request['imagen'] ?? inventario?['imagen'];
+    final itemNumber = _itemNumber(request);
     final stockActual = request['stock_actual'] ?? 0;
     final cantidadSolicitada = request['cantidad_solicitada'] ?? 0;
 
-    final usuario = request['profiles'] as Map<String, dynamic>?;
-    final nombreUsuario = usuario?['full_name'] ?? 'User';
+    // Solicitante y proveedor enriquecidos por RestockService._enrichRequests
+    final nombreUsuario = (request['requester_name'] ?? 'User').toString();
+    final supplier = request['supplier'] as Map<String, dynamic>?;
+    final hasSupplier = request['has_supplier'] == true || supplier != null;
 
     return Card(
       margin: const EdgeInsets.only(bottom: 16),
@@ -359,11 +431,11 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
 
               Row(
                 children: [
-                  if (inventario?['imagen'] != null)
+                  if (imagenProducto != null)
                     ClipRRect(
                       borderRadius: BorderRadius.circular(8),
                       child: Image.network(
-                        inventario!['imagen'],
+                        imagenProducto,
                         width: 50,
                         height: 50,
                         fit: BoxFit.cover,
@@ -390,6 +462,26 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
                         ),
+                        if (itemNumber != null) ...[
+                          const SizedBox(height: 4),
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                                horizontal: 8, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF2B5F8C).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              'Item # $itemNumber',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.bold,
+                                color: Color(0xFF2B5F8C),
+                                letterSpacing: 0.3,
+                              ),
+                            ),
+                          ),
+                        ],
                         const SizedBox(height: 4),
                         Text(
                           'Requested by: $nombreUsuario',
@@ -397,6 +489,36 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
                             fontSize: 12,
                             color: Colors.grey[600],
                           ),
+                        ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Icon(
+                              hasSupplier
+                                  ? Icons.local_shipping
+                                  : Icons.warning_amber_rounded,
+                              size: 13,
+                              color: hasSupplier
+                                  ? const Color(0xFF6B8E3D)
+                                  : const Color(0xFFF59E0B),
+                            ),
+                            const SizedBox(width: 4),
+                            Expanded(
+                              child: Text(
+                                hasSupplier
+                                    ? 'Supplier: ${supplier?['name'] ?? ''}'
+                                    : 'No supplier linked',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w500,
+                                  color: hasSupplier
+                                      ? const Color(0xFF6B8E3D)
+                                      : const Color(0xFFF59E0B),
+                                ),
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
@@ -554,8 +676,7 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
 
   void _showRequestDetails(Map<String, dynamic> request) {
     final inventario = request['inventario'] as Map<String, dynamic>?;
-    final supplier = request['supply_company'] as Map<String, dynamic>?;
-    final usuario = request['profiles'] as Map<String, dynamic>?;
+    final supplier = request['supplier'] as Map<String, dynamic>?;
 
     showDialog(
       context: context,
@@ -566,13 +687,24 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
             children: [
-              _buildDetailRow('Product', inventario?['nombre_producto'] ?? 'N/A'),
-              _buildDetailRow('Requested by', usuario?['full_name'] ?? 'N/A'),
-              _buildDetailRow('Email', usuario?['email'] ?? 'N/A'),
+              _buildDetailRow(
+                  'Product',
+                  (request['nombre_producto'] ??
+                          inventario?['nombre_producto'] ??
+                          'N/A')
+                      .toString()),
+              _buildDetailRow('Item Number', _itemNumber(request) ?? 'N/A'),
+              _buildDetailRow('Request ID', '#${request['id']}'),
+              _buildDetailRow(
+                  'Requested by', (request['requester_name'] ?? 'N/A').toString()),
               if (supplier != null) ...[
                 const Divider(),
                 _buildDetailRow('Supplier', supplier['name'] ?? 'N/A'),
+                _buildDetailRow('Supplier Email', supplier['email'] ?? 'N/A'),
                 _buildDetailRow('Supplier Phone', supplier['phone'] ?? 'N/A'),
+              ] else ...[
+                const Divider(),
+                _buildDetailRow('Supplier', 'No supplier linked'),
               ],
               const Divider(),
               _buildDetailRow('Current Stock', request['stock_actual'].toString()),
@@ -637,10 +769,16 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
   void _showApproveDialog(Map<String, dynamic> request) {
     final notesController = TextEditingController();
     DateTime? estimatedDeliveryDate;
-    Map<String, dynamic>? selectedSupplier;
+    // 🔗 Pre-seleccionar el proveedor que ya está enlazado al producto (si lo tiene)
+    Map<String, dynamic>? selectedSupplier =
+        request['supplier'] as Map<String, dynamic>?;
 
     final inventario = request['inventario'] as Map<String, dynamic>?;
-    final nombreProducto = inventario?['nombre_producto'] ?? 'Unknown Product';
+    final nombreProducto = (request['nombre_producto'] ??
+            inventario?['nombre_producto'] ??
+            'Unknown Product')
+        .toString();
+    final itemNumber = _itemNumber(request);
 
     showDialog(
       context: context,
@@ -662,6 +800,17 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
                   'Confirm restock approval for "$nombreProducto"?',
                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
                 ),
+                if (itemNumber != null) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    'Item # $itemNumber',
+                    style: const TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF2B5F8C),
+                    ),
+                  ),
+                ],
 
                 const SizedBox(height: 20),
 
@@ -787,7 +936,7 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
                   : () async {
                 Navigator.pop(context);
                 await _approveRequestWithQR(
-                  request['id'],
+                  request,
                   selectedSupplier!['id'],
                   notesController.text.trim().isEmpty ? null : notesController.text.trim(),
                   estimatedDeliveryDate,
@@ -808,12 +957,27 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
   }
 
   Future<void> _approveRequestWithQR(
-      int requestId,
+      Map<String, dynamic> request,
       int supplierId,
       String? notes,
       DateTime? estimatedDeliveryDate) async {
+    final requestId = request['id'] as int;
     _showLoadingDialog();
     try {
+      // 🔗 Si el producto aún no tenía proveedor, lo enlazamos ahora para que
+      // futuras solicitudes y correos salgan a este proveedor automáticamente.
+      final productId = request['id_inventario'] as int?;
+      if (productId != null && request['has_supplier'] != true) {
+        try {
+          await InventoryService.assignSupplierToProduct(productId, supplierId);
+        } catch (e) {
+          debugPrint('⚠️ No se pudo enlazar el proveedor al producto: $e');
+        }
+      }
+
+      // approveRequest ya notifica a proveedor (con QR), solicitante y jefe.
+      // Antes se volvía a llamar a sendApprovalEmailWithQR aquí y el proveedor
+      // recibía el mismo correo dos veces.
       await RestockService.approveRequest(
         requestId: requestId,
         supplierId: supplierId,
@@ -821,19 +985,9 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
         estimatedDeliveryDate: estimatedDeliveryDate,
       );
 
-      final qrData = 'miatracker://restock/complete/$requestId';
-
-      await EmailService.sendApprovalEmailWithQR(
-        requestId: requestId,
-        supplierId: supplierId,
-        deliveryDate: estimatedDeliveryDate,
-        internalNotes: notes,
-        qrData: qrData,
-      );
-
       if (mounted) {
         Navigator.pop(context);
-        _showSuccessSnackBar('✅ Request approved with QR code sent');
+        _showSuccessSnackBar('✅ Request approved — supplier, requester and admins notified');
         await _loadData();
       }
     } catch (e) {
@@ -845,8 +999,10 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
   }
 
   void _showRejectDialog(Map<String, dynamic> request) {
-    final inventario = request['inventario'] as Map<String, dynamic>?;
-    final nombreProducto = inventario?['nombre_producto'] ?? 'Unknown Product';
+    // `getAllRequests()` hace select('*') sin JOIN, así que la clave
+    // 'inventario' NO existe: leerla primero hacía que siempre saliera
+    // "Unknown Product". El nombre real viene en la propia solicitud.
+    final nombreProducto = _productName(request);
 
     showDialog(
       context: context,
@@ -862,11 +1018,27 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
     );
   }
 
-  void _showCompleteDialog(Map<String, dynamic> request) {
-    final inventario = request['inventario'] as Map<String, dynamic>?;
-    final nombreProducto = inventario?['nombre_producto'] ?? 'Unknown Product';
-    final stockActual = request['stock_actual'] ?? 0;
-    final cantidadSolicitada = request['cantidad_solicitada'] ?? 0;
+  Future<void> _showCompleteDialog(Map<String, dynamic> request) async {
+    final nombreProducto = _productName(request);
+    final cantidadSolicitada = (request['cantidad_solicitada'] as int?) ?? 0;
+
+    // `stock_actual` es el stock que había CUANDO se creó la solicitud. Si el
+    // inventario se movió desde entonces, el "New stock" que se mostraba aquí
+    // no coincidía con el que realmente se guarda al completar (el servicio
+    // relee el stock de la BD). Leemos el valor actual para que cuadre.
+    int stockActual = (request['stock_actual'] as int?) ?? 0;
+    final productId = request['id_inventario'] as int?;
+    if (productId != null) {
+      try {
+        final product = await InventoryService.getProductById(productId);
+        final cantidad = product?['cantidad'];
+        if (cantidad is int) stockActual = cantidad;
+      } catch (e) {
+        debugPrint('⚠️ No se pudo leer el stock actual: $e');
+      }
+    }
+
+    if (!mounted) return;
 
     showDialog(
       context: context,
@@ -1090,6 +1262,37 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
       default:
         return Icons.help;
     }
+  }
+
+  /// Nombre del producto de una solicitud.
+  /// `getAllRequests()` no hace JOIN con `inventario`, así que el nombre real
+  /// vive en `nombre_producto` dentro de la propia fila de `restock_requests`.
+  /// El acceso a `request['inventario']` solo se mantiene como último recurso
+  /// para las pantallas que sí traen el JOIN.
+  /// Item Number = código de barras del producto. Es la MISMA referencia que
+  /// va en los correos, para poder cruzar pantalla y correo sin ambigüedad.
+  /// `RestockService._enrichRequests` ya lo deja resuelto en 'item_number'.
+  String? _itemNumber(Map<String, dynamic> request) {
+    final precomputed = request['item_number'];
+    if (precomputed is String && precomputed.trim().isNotEmpty) {
+      return precomputed.trim();
+    }
+
+    final inventario = request['inventario'] as Map<String, dynamic>?;
+    return EmailService.extractItemNumber(
+      inventario?['codigo_barras'] ?? request['codigo_barras'],
+    );
+  }
+
+  String _productName(Map<String, dynamic> request) {
+    final direct = request['nombre_producto'];
+    if (direct is String && direct.trim().isNotEmpty) return direct.trim();
+
+    final inventario = request['inventario'] as Map<String, dynamic>?;
+    final joined = inventario?['nombre_producto'];
+    if (joined is String && joined.trim().isNotEmpty) return joined.trim();
+
+    return 'Unknown Product';
   }
 
   String _formatDate(dynamic date) {

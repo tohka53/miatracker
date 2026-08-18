@@ -72,7 +72,7 @@ class _TransferScreenState extends State<TransferScreen>
         backgroundColor: const Color(0xFFF5F3E8),
         appBar: AppBar(
           leading: const SizedBox.shrink(),
-          title: const Text('Transferencias'),
+          title: const Text('Transfers'),
           backgroundColor: const Color(0xFF2B5F8C),
           foregroundColor: Colors.white,
           elevation: 0,
@@ -114,8 +114,8 @@ class _TransferScreenState extends State<TransferScreen>
         unselectedLabelColor: Colors.grey,
         indicatorColor: const Color(0xFF6B8E3D),
         tabs: const [
-          Tab(icon: Icon(Icons.add_circle_outline), text: 'Nueva'),
-          Tab(icon: Icon(Icons.history), text: 'Historial'),
+          Tab(icon: Icon(Icons.add_circle_outline), text: 'New'),
+          Tab(icon: Icon(Icons.history), text: 'History'),
           Tab(icon: Icon(Icons.qr_code_scanner), text: 'Escanear'),
         ],
       ),
@@ -166,7 +166,7 @@ class _TransferScreenState extends State<TransferScreen>
               Icon(Icons.location_on, color: Color(0xFF2B5F8C)),
               SizedBox(width: 8),
               Text(
-                'Seleccionar Localizaciones',
+                'Select Locations',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -188,11 +188,11 @@ class _TransferScreenState extends State<TransferScreen>
             items: [
               const DropdownMenuItem<int?>(
                 value: null,
-                child: Text('Entrada Nueva / Sin Origen'),
+                child: Text('New Entry / No Origin'),
               ),
               ..._locations.map((loc) => DropdownMenuItem<int?>(
                 value: loc['id_locat'],
-                child: Text(loc['lugar_fisico'] ?? 'Sin nombre'),
+                child: Text(loc['lugar_fisico'] ?? 'No name'),
               )),
             ],
             onChanged: (value) {
@@ -206,7 +206,7 @@ class _TransferScreenState extends State<TransferScreen>
           DropdownButtonFormField<int?>(
             value: _selectedDestinationLocation,
             decoration: InputDecoration(
-              labelText: 'Hacia (Destino) *',
+              labelText: 'To (Destination) *',
               prefixIcon: const Icon(Icons.arrow_downward, color: Colors.orange),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(12),
@@ -216,7 +216,7 @@ class _TransferScreenState extends State<TransferScreen>
                 .where((loc) => loc['id_locat'] != _selectedOriginLocation)
                 .map((loc) => DropdownMenuItem<int?>(
               value: loc['id_locat'],
-              child: Text(loc['lugar_fisico'] ?? 'Sin nombre'),
+              child: Text(loc['lugar_fisico'] ?? 'No name'),
             ))
                 .toList(),
             onChanged: (value) {
@@ -252,7 +252,7 @@ class _TransferScreenState extends State<TransferScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'Carrito Vacío',
+              'Empty Cart',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -261,7 +261,7 @@ class _TransferScreenState extends State<TransferScreen>
             ),
             const SizedBox(height: 8),
             Text(
-              'Selecciona productos para transferir',
+              'Select products to transfer',
               style: TextStyle(color: Colors.grey.shade500),
             ),
           ],
@@ -295,7 +295,7 @@ class _TransferScreenState extends State<TransferScreen>
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
-                    'Productos a Transferir (${_transferCart.length})',
+                    'Products to Transfer (${_transferCart.length})',
                     style: const TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -340,7 +340,7 @@ class _TransferScreenState extends State<TransferScreen>
                   ),
                 )
                     : const Icon(Icons.send),
-                label: Text(_isProcessing ? 'Procesando...' : 'Crear Transferencia'),
+                label: Text(_isProcessing ? 'Procesando...' : 'Create Transfer'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF6B8E3D),
                   foregroundColor: Colors.white,
@@ -395,7 +395,7 @@ class _TransferScreenState extends State<TransferScreen>
                 ),
                 const SizedBox(height: 4),
                 Text(
-                  'Cantidad: ${item['cantidad']}',
+                  'Quantity: ${item['cantidad']}',
                   style: const TextStyle(
                     color: Color(0xFF6B8E3D),
                     fontWeight: FontWeight.w600,
@@ -485,7 +485,7 @@ class _TransferScreenState extends State<TransferScreen>
             ),
             const SizedBox(height: 16),
             Text(
-              'No hay productos disponibles',
+              'No products available',
               style: TextStyle(
                 fontSize: 16,
                 fontWeight: FontWeight.bold,
@@ -496,7 +496,7 @@ class _TransferScreenState extends State<TransferScreen>
             Text(
               _transferCart.isEmpty
                   ? 'Agrega productos a tu inventario primero'
-                  : 'Todos los productos ya están en el carrito',
+                  : 'All products are already in the cart',
               style: TextStyle(color: Colors.grey.shade500, fontSize: 14),
               textAlign: TextAlign.center,
             ),
@@ -526,7 +526,7 @@ class _TransferScreenState extends State<TransferScreen>
               Icon(Icons.add_shopping_cart, color: Color(0xFF6B8E3D)),
               SizedBox(width: 8),
               Text(
-                'Agregar Productos',
+                'Add Products',
                 style: TextStyle(
                   fontSize: 18,
                   fontWeight: FontWeight.bold,
@@ -670,7 +670,7 @@ class _TransferScreenState extends State<TransferScreen>
             const SizedBox(height: 12),
             const Divider(),
             const Text(
-              'Selecciona ubicación de origen:',
+              'Select origin location:',
               style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 8),
@@ -696,7 +696,7 @@ class _TransferScreenState extends State<TransferScreen>
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            loc['lugar_fisico'] ?? 'Sin nombre',
+                            loc['lugar_fisico'] ?? 'No name',
                             style: const TextStyle(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -781,7 +781,7 @@ class _TransferScreenState extends State<TransferScreen>
                 ),
                 const SizedBox(height: 16),
                 const Text(
-                  'Sin Transferencias',
+                  'No Transfers',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -873,7 +873,7 @@ class _TransferScreenState extends State<TransferScreen>
                     const SizedBox(width: 8),
                     Expanded(
                       child: Text(
-                        '${transfer['origen'] ?? 'Nueva Entrada'} → ${transfer['destino']}',
+                        '${transfer['origen'] ?? 'New Entry'} → ${transfer['destino']}',
                         style: const TextStyle(fontSize: 14),
                       ),
                     ),
@@ -907,7 +907,7 @@ class _TransferScreenState extends State<TransferScreen>
                         child: OutlinedButton.icon(
                           onPressed: () => _cancelTransfer(transfer['id']),
                           icon: const Icon(Icons.cancel, size: 16),
-                          label: const Text('Cancelar'),
+                          label: const Text('Cancel'),
                           style: OutlinedButton.styleFrom(
                             foregroundColor: Colors.red,
                           ),
@@ -950,7 +950,7 @@ class _TransferScreenState extends State<TransferScreen>
             ),
             const SizedBox(height: 24),
             const Text(
-              'Escanear Código de Transferencia',
+              'Scan Transfer Code',
               style: TextStyle(
                 fontSize: 20,
                 fontWeight: FontWeight.bold,
@@ -960,7 +960,7 @@ class _TransferScreenState extends State<TransferScreen>
             ),
             const SizedBox(height: 16),
             const Text(
-              'Escanea el código QR para autorizar\no completar una transferencia',
+              'Scan the QR code to authorize\nor complete a transfer',
               style: TextStyle(color: Colors.grey),
               textAlign: TextAlign.center,
             ),
@@ -968,7 +968,7 @@ class _TransferScreenState extends State<TransferScreen>
             ElevatedButton.icon(
               onPressed: _scanTransferCode,
               icon: const Icon(Icons.qr_code_scanner),
-              label: const Text('Escanear Código'),
+              label: const Text('Scan Code'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6B8E3D),
                 foregroundColor: Colors.white,
@@ -982,7 +982,7 @@ class _TransferScreenState extends State<TransferScreen>
             OutlinedButton.icon(
               onPressed: _enterTransferCodeManually,
               icon: const Icon(Icons.keyboard),
-              label: const Text('Ingresar Código Manualmente'),
+              label: const Text('Enter Code Manually'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: const Color(0xFF2B5F8C),
                 padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
@@ -1031,7 +1031,7 @@ class _TransferScreenState extends State<TransferScreen>
         _transferCart[index]['cantidad'] = newQuantity;
       });
     } else {
-      _showError('Stock máximo: $maxStock');
+      _showError('Maximum stock: $maxStock');
     }
   }
 
@@ -1043,7 +1043,7 @@ class _TransferScreenState extends State<TransferScreen>
       final ubicaciones = product['ubicaciones'] as List? ?? [];
       final location = ubicaciones.firstWhere(
             (loc) => loc['id_location'] == fromLocationId,
-        orElse: () => {'lugar_fisico': 'Ubicación desconocida'},
+        orElse: () => {'lugar_fisico': 'Unknown location'},
       );
       locationName = location['lugar_fisico'];
     }
@@ -1051,7 +1051,7 @@ class _TransferScreenState extends State<TransferScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Agregar a Transferencia'),
+        title: const Text('Add to Transfer'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
@@ -1094,7 +1094,7 @@ class _TransferScreenState extends State<TransferScreen>
               controller: quantityController,
               keyboardType: TextInputType.number,
               decoration: InputDecoration(
-                labelText: 'Cantidad',
+                labelText: 'Quantity',
                 border: const OutlineInputBorder(),
                 suffixText: '/ $maxStock',
               ),
@@ -1105,7 +1105,7 @@ class _TransferScreenState extends State<TransferScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1125,14 +1125,14 @@ class _TransferScreenState extends State<TransferScreen>
                 Navigator.pop(context);
               } else {
                 Navigator.pop(context);
-                _showError('Cantidad inválida (máx: $maxStock)');
+                _showError('Invalid quantity (max: $maxStock)');
               }
             },
             style: ElevatedButton.styleFrom(
               backgroundColor: const Color(0xFF6B8E3D),
               foregroundColor: Colors.white,
             ),
-            child: const Text('Agregar'),
+            child: const Text('Add'),
           ),
         ],
       ),
@@ -1194,14 +1194,14 @@ class _TransferScreenState extends State<TransferScreen>
           children: [
             Icon(Icons.check_circle, color: Color(0xFF6B8E3D), size: 48),
             SizedBox(height: 8),
-            Text('Transferencia Creada'),
+            Text('Transfer Created'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
             const Text(
-              'Tu transferencia ha sido creada exitosamente',
+              'Your transfer has been created successfully',
               textAlign: TextAlign.center,
             ),
             const SizedBox(height: 16),
@@ -1214,7 +1214,7 @@ class _TransferScreenState extends State<TransferScreen>
               child: Column(
                 children: [
                   const Text(
-                    'Código de Transferencia:',
+                    'Transfer Code:',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   const SizedBox(height: 8),
@@ -1254,7 +1254,7 @@ class _TransferScreenState extends State<TransferScreen>
               _tabController.animateTo(1);
               _loadData();
             },
-            child: const Text('Cerrar'),
+            child: const Text('Close'),
           ),
         ],
       ),
@@ -1265,15 +1265,15 @@ class _TransferScreenState extends State<TransferScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Completar Transferencia'),
+        title: const Text('Complete Transfer'),
         content: const Text(
-          '¿Confirmas que esta transferencia ha sido recibida?\n\n'
-              'El stock se actualizará automáticamente.',
+          'Do you confirm this transfer has been received?\n\n'
+              'Stock will be updated automatically.',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -1291,7 +1291,7 @@ class _TransferScreenState extends State<TransferScreen>
 
     try {
       await TransferService.processTransfer(transferId);
-      _showSuccess('Transferencia completada exitosamente');
+      _showSuccess('Transfer completed successfully');
       setState(() {});
     } catch (e) {
       _showError('Error: $e');
@@ -1302,8 +1302,8 @@ class _TransferScreenState extends State<TransferScreen>
     final confirm = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancelar Transferencia'),
-        content: const Text('¿Estás seguro de cancelar esta transferencia?'),
+        title: const Text('Cancel Transfer'),
+        content: const Text('Are you sure you want to cancel this transfer?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
@@ -1315,7 +1315,7 @@ class _TransferScreenState extends State<TransferScreen>
               backgroundColor: Colors.red,
               foregroundColor: Colors.white,
             ),
-            child: const Text('Sí, Cancelar'),
+            child: const Text('Yes, Cancel'),
           ),
         ],
       ),
@@ -1325,7 +1325,7 @@ class _TransferScreenState extends State<TransferScreen>
 
     try {
       await TransferService.cancelTransfer(transferId);
-      _showSuccess('Transferencia cancelada');
+      _showSuccess('Transfer cancelled');
       setState(() {});
     } catch (e) {
       _showError('Error: $e');
@@ -1361,7 +1361,7 @@ class _TransferScreenState extends State<TransferScreen>
                   backgroundColor: const Color(0xFF2B5F8C),
                   foregroundColor: Colors.white,
                 ),
-                child: const Text('Cerrar'),
+                child: const Text('Close'),
               ),
             ],
           ),
@@ -1387,11 +1387,11 @@ class _TransferScreenState extends State<TransferScreen>
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Ingresar Código'),
+        title: const Text('Enter Code'),
         content: TextField(
           controller: codeController,
           decoration: const InputDecoration(
-            labelText: 'Código de Transferencia',
+            labelText: 'Transfer Code',
             hintText: 'TRF-YYYYMMDD-XXXX',
             border: OutlineInputBorder(),
           ),
@@ -1400,7 +1400,7 @@ class _TransferScreenState extends State<TransferScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cancelar'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () {
@@ -1411,7 +1411,7 @@ class _TransferScreenState extends State<TransferScreen>
               backgroundColor: const Color(0xFF6B8E3D),
               foregroundColor: Colors.white,
             ),
-            child: const Text('Buscar'),
+            child: const Text('Search'),
           ),
         ],
       ),
@@ -1426,7 +1426,7 @@ class _TransferScreenState extends State<TransferScreen>
       final transfer = await TransferService.getTransferByCode(searchCode);
 
       if (transfer == null) {
-        _showError('Transferencia no encontrada');
+        _showError('Transfer not found');
         return;
       }
 
@@ -1468,13 +1468,13 @@ class _TransferScreenState extends State<TransferScreen>
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              _buildDetailRow('Origen:',
-                  transfer['locat_origen']?['lugar_fisico'] ?? 'Nueva Entrada'),
-              _buildDetailRow('Destino:',
+              _buildDetailRow('Origin:',
+                  transfer['locat_origen']?['lugar_fisico'] ?? 'New Entry'),
+              _buildDetailRow('Destination:',
                   transfer['locat_destino']?['lugar_fisico'] ?? 'N/A'),
               const Divider(),
               const Text(
-                'Productos:',
+                'Products:',
                 style: TextStyle(fontWeight: FontWeight.bold),
               ),
               ...details.map((item) => Padding(
@@ -1490,7 +1490,7 @@ class _TransferScreenState extends State<TransferScreen>
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
-            child: const Text('Cerrar'),
+            child: const Text('Close'),
           ),
           if (transfer['status'] == 'pending')
             ElevatedButton(
@@ -1629,7 +1629,7 @@ class _TransferScannerScreenState extends State<_TransferScannerScreen> {
       appBar: AppBar(
         backgroundColor: Colors.black,
         foregroundColor: Colors.white,
-        title: const Text('Escanear Transferencia'),
+        title: const Text('Scan Transfer'),
         actions: [
           IconButton(
             icon: const Icon(Icons.flash_on),

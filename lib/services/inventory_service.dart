@@ -1,7 +1,7 @@
   import 'package:flutter/foundation.dart';
   import 'package:supabase_flutter/supabase_flutter.dart';
   import '../services/auth_service.dart';
-  import 'inventory_service_optimized.dart';
+  import '../services/email_service.dart';
 
   class InventoryService {
     static final SupabaseClient _supabase = AuthService.client;
@@ -72,12 +72,7 @@
         final response = await _supabase
             .from('inventario')
             .select('''
-              *,
-              locat!inventario_id_location_fkey (
-                id_locat,
-                lugar_fisico,
-                coordenadas
-              )
+              *
             ''')
             .eq('id_company', companyId)
             .eq('status', 1)
@@ -102,6 +97,27 @@
         }
 
         return inventory;
+      } catch (e) {
+        throw Exception('Error al obtener inventario: $e');
+      }
+    }
+
+    /// Inventario LIVIANO para el carrito: una sola query, sin N+1 de distribución.
+    static Future<List<Map<String, dynamic>>> getInventoryForCart() async {
+      try {
+        final companyId = await getCurrentCompanyId();
+        if (companyId == null) return [];
+        final response = await _supabase
+            .from('inventario')
+            .select('id_inventario, nombre_producto, cantidad, precio, imagen')
+            .eq('id_company', companyId)
+            .eq('status', 1)
+            .order('nombre_producto', ascending: true);
+        return List<Map<String, dynamic>>.from(response).map((item) => {
+          ...item,
+          'precio': item['precio'] ?? 0.0,
+          'image_url': item['imagen'],
+        }).toList();
       } catch (e) {
         throw Exception('Error al obtener inventario: $e');
       }
@@ -389,12 +405,7 @@
         final response = await _supabase
             .from('inventario')
             .select('''
-              *,
-              locat!inventario_id_location_fkey (
-                id_locat,
-                lugar_fisico,
-                coordenadas
-              )
+              *
             ''')
             .eq('id_company', companyId)
             .eq('status', 1);
@@ -500,12 +511,7 @@
         final response = await _supabase
             .from('inventario')
             .select('''
-              *,
-              locat!inventario_id_location_fkey (
-                id_locat,
-                lugar_fisico,
-                coordenadas
-              )
+              *
             ''')
             .eq('id_company', companyId)
             .eq('id_inventario', itemId)
@@ -609,12 +615,7 @@
         final response = await _supabase
             .from('inventario')
             .select('''
-              *,
-              locat!inventario_id_location_fkey (
-                id_locat,
-                lugar_fisico,
-                coordenadas
-              )
+              *
             ''')
             .eq('id_company', companyId)
             .eq('status', 1)
@@ -668,11 +669,6 @@
             .from('inventario')
             .select('''
             *,
-            locat!inventario_id_location_fkey (
-              id_locat,
-              lugar_fisico,
-              coordenadas
-            ),
             supply_company!inventario_id_supply_company_fkey (
               id,
               name,
@@ -723,12 +719,7 @@
         final response = await _supabase
             .from('inventario')
             .select('''
-            *,
-            locat!inventario_id_location_fkey (
-              id_locat,
-              lugar_fisico,
-              coordenadas
-            )
+            *
           ''')
             .eq('user_id', userId)
             .eq('id_supply_company', supplierId)
@@ -757,8 +748,8 @@
 
     static Future<void> assignSupplierToProduct(int productId, int? supplierId) async {
       try {
-        final userId = AuthService.currentUser?.id;
-        if (userId == null) throw Exception('Usuario no autenticado');
+        final companyId = await getCurrentCompanyId();
+        if (companyId == null) throw Exception('No perteneces a ninguna compañía');
 
         await _supabase
             .from('inventario')
@@ -767,7 +758,7 @@
           'fecha_modificacion': DateTime.now().toIso8601String(),
         })
             .eq('id_inventario', productId)
-            .eq('user_id', userId);
+            .eq('id_company', companyId);
       } catch (e) {
         throw Exception('Error al asignar proveedor: $e');
       }
@@ -923,19 +914,15 @@
 
     static Future<List<Map<String, dynamic>>> getProductsWithoutSupplier() async {
       try {
-        final userId = AuthService.currentUser?.id;
-        if (userId == null) return [];
+        final companyId = await getCurrentCompanyId();
+        if (companyId == null) return [];
 
         final response = await _supabase
             .from('inventario')
             .select('''
-            *,
-            locat!inventario_id_location_fkey (
-              id_locat,
-              lugar_fisico
-            )
+            *
           ''')
-            .eq('user_id', userId)
+            .eq('id_company', companyId)
             .eq('status', 1)
             .filter('id_supply_company', 'is', null)
             .order('nombre_producto', ascending: true);
@@ -960,9 +947,9 @@
     }
 
     static String formatPrice(dynamic price) {
-      if (price == null) return 'Q 0.00';
+      if (price == null) return '\$0.00';
       final double priceValue = price is double ? price : double.tryParse(price.toString()) ?? 0.0;
-      return 'Q ${priceValue.toStringAsFixed(2)}';
+      return '\$${priceValue.toStringAsFixed(2)}';
     }
 
     static double calculateProductValue(Map<String, dynamic> product) {
@@ -1223,7 +1210,30 @@
             .single();
 
         if (kDebugMode) {
+          print('✅ Solicitud de restock creada: #${response['id']}');
+        }
 
+        // 📧 NOTIFICAR A LOS TRES: solicitante, jefe/admins y proveedor.
+        // Este es el único punto de creación conectado a la UI, así que si el
+        // aviso no sale de aquí, no sale de ningún lado.
+        try {
+          await EmailService.notifyRestockCreated(
+            requestId: response['id'] as int,
+            companyId: companyId,
+            requesterUserId: userId,
+            productName: (product['nombre_producto'] ?? 'Producto').toString(),
+            requestedQuantity: requestedQuantity,
+            currentStock: (product['cantidad'] as int?) ?? 0,
+            priority: priority,
+            supplierId: product['id_supply_company'] as int?,
+            notes: notes,
+            productId: productId, // -> Item Number (código de barras) en el correo
+          );
+        } catch (e) {
+          // La solicitud ya se guardó: un fallo de correo no debe revertirla.
+          if (kDebugMode) {
+            print('⚠️ Solicitud creada, pero falló el envío de correos: $e');
+          }
         }
 
         return response;
@@ -1369,11 +1379,11 @@
     static String getRestockStatusText(String? status) {
       switch (status?.toLowerCase()) {
         case 'pending':
-          return 'Pendiente';
+          return 'Pending';
         case 'approved':
-          return 'Aprobada';
+          return 'Approved';
         case 'rejected':
-          return 'Rechazada';
+          return 'Rejected';
         case 'completed':
           return 'Completada';
         case 'cancelled':
@@ -1429,12 +1439,7 @@
         final response = await _supabase
             .from('inventario')
             .select('''
-            *,
-            locat!inventario_id_location_fkey (
-              id_locat,
-              lugar_fisico,
-              coordenadas
-            )
+            *
           ''')
             .eq('id_inventario', productId)
             .eq('id_company', companyId)
@@ -1531,11 +1536,7 @@
             cantidad,
             alerta_cantidad,
             precio,
-            fecha_modificacion,
-            locat!inventario_id_location_fkey (
-              id_locat,
-              lugar_fisico
-            )
+            fecha_modificacion
           ''')
             .eq('id_company', companyId)
             .eq('status', 1)
@@ -1610,11 +1611,7 @@
             imagen,
             cantidad,
             alerta_cantidad,
-            precio,
-            locat!inventario_id_location_fkey (
-              id_locat,
-              lugar_fisico
-            )
+            precio
           ''')
             .eq('id_company', companyId)
             .eq('status', 1)
@@ -1732,11 +1729,7 @@
             imagen,
             cantidad,
             alerta_cantidad,
-            precio,
-            locat!inventario_id_location_fkey (
-              id_locat,
-              lugar_fisico
-            )
+            precio
           ''')
             .eq('id_company', companyId)
             .eq('status', 1);

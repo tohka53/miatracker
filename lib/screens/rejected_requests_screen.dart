@@ -44,12 +44,12 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
   Widget build(BuildContext context) {
     return BaseScreen(
       currentRoute: '/rejected-requests',
-      title: 'Solicitudes Rechazadas',
+      title: 'Rejected Requests',
       actions: [
         IconButton(
           icon: const Icon(Icons.refresh),
           onPressed: _loadData,
-          tooltip: 'Actualizar',
+          tooltip: 'Refresh',
         ),
       ],
       child: _isLoading
@@ -92,7 +92,7 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
             Expanded(
               child: _buildStatItem(
                 Icons.cancel,
-                'Total Rechazadas',
+                'Total Rejected',
                 '${_stats['total_rejected'] ?? 0}',
                 Colors.red,
               ),
@@ -178,14 +178,14 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        request['nombre_producto'] ?? 'Producto',
+                        request['nombre_producto'] ?? 'Product',
                         style: const TextStyle(
                           fontWeight: FontWeight.bold,
                           fontSize: 16,
                         ),
                       ),
                       Text(
-                        'Solicitud rechazada',
+                        'Request rejected',
                         style: TextStyle(
                           color: Colors.red.shade700,
                           fontSize: 12,
@@ -206,14 +206,14 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
               children: [
                 _buildInfoRow(
                   Icons.inventory_2,
-                  'Cantidad',
-                  '${request['cantidad_solicitada'] ?? 0} unidades',
+                  'Quantity',
+                  '${request['cantidad_solicitada'] ?? 0} units',
                 ),
                 if (supplierId != null) ...[
                   const SizedBox(height: 8),
                   _buildInfoRow(
                     Icons.business,
-                    'ID Proveedor',
+                    'Supplier ID',
                     supplierId.toString(),
                   ),
                 ],
@@ -241,7 +241,7 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
                             ),
                             const SizedBox(width: 8),
                             Text(
-                              'Motivo del rechazo',
+                              'Rejection reason',
                               style: TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.orange.shade900,
@@ -325,7 +325,7 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
           ),
           const SizedBox(height: 16),
           Text(
-            'No hay solicitudes rechazadas',
+            'No rejected requests',
             style: TextStyle(
               fontSize: 18,
               color: Colors.grey.shade600,
@@ -334,7 +334,7 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
           ),
           const SizedBox(height: 8),
           Text(
-            'Todas las solicitudes han sido procesadas',
+            'All requests have been processed',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey.shade500,
@@ -352,13 +352,13 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Reenviar Email'),
         content: Text(
-          '¿Deseas reenviar el email de rechazo para esta solicitud?\n\n'
-              'Producto: ${request['nombre_producto']}',
+          'Do you want to resend the rejection email for this request?\n\n'
+              'Product: ${request['nombre_producto']}',
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
@@ -403,10 +403,10 @@ class _RejectedRequestsScreenState extends State<RejectedRequestsScreen> {
       Navigator.pop(context); // Cerrar loading
 
       if (result['success'] == true) {
-        _showSuccessSnackBar('✅ Email reenviado exitosamente');
+        _showSuccessSnackBar('✅ Email resent successfully');
         await _loadData();
       } else {
-        throw Exception(result['error'] ?? 'Error desconocido');
+        throw Exception(result['error'] ?? 'Unknown error');
       }
     } catch (e) {
       if (!mounted) return;

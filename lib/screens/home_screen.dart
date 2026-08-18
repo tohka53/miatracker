@@ -104,7 +104,7 @@
     }
 
     bool get _isAdminOrSupervisor {
-      return _userRole == 'admin' || _userRole == 'supervisor';
+      return _userRole == 'admin' || _userRole == 'supervisor' || _userRole == 'super_admin';
     }
 
     @override

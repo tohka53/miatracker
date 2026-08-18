@@ -4,7 +4,6 @@
 
 import 'package:flutter/material.dart';
 import '../services/order_service.dart';
-import '../services/cart_service.dart';
 
 class CheckoutScreen extends StatefulWidget {
   final List<Map<String, dynamic>> cartItems;
@@ -53,7 +52,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
       }
 
       if (widget.cartItems.isEmpty) {
-        throw Exception('El carrito está vacío');
+        throw Exception('The cart is empty');
       }
 
       // ✅ PREPARAR DATOS
@@ -78,7 +77,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
         // Navegar de regreso y limpiar carrito
         Navigator.of(context).pop(true);
       } else {
-        throw Exception(result['message'] ?? 'Error desconocido');
+        throw Exception(result['message'] ?? 'Unknown error');
       }
     } catch (e) {
       if (!mounted) return;
@@ -111,14 +110,14 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
           children: [
             Icon(Icons.check_circle, color: Colors.green, size: 32),
             SizedBox(width: 12),
-            Text('¡Orden Creada!'),
+            Text('Order Created!'),
           ],
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            _buildInfoRow('Número de Orden:', result['order_number'] ?? 'N/A'),
+            _buildInfoRow('Order Number:', result['order_number'] ?? 'N/A'),
             SizedBox(height: 8),
             _buildInfoRow('QR Code:', result['qr_code'] ?? 'N/A'),
             SizedBox(height: 8),
@@ -136,7 +135,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'El stock se ha actualizado automáticamente',
+                      'Stock has been updated automatically',
                       style: TextStyle(
                         fontSize: 13,
                         color: Colors.green.shade700,
@@ -195,7 +194,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   SizedBox(width: 8),
                   Expanded(
                     child: Text(
-                      'Si el error persiste, verifica tu conexión o contacta soporte',
+                      'If the error persists, check your connection or contact support',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.orange.shade700,
@@ -267,7 +266,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Resumen del Pedido',
+                      'Order Summary',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -333,7 +332,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
-                      'Información del Cliente',
+                      'Customer Information',
                       style: TextStyle(
                         fontSize: 18,
                         fontWeight: FontWeight.bold,
@@ -343,7 +342,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                     TextField(
                       controller: _customerNameController,
                       decoration: InputDecoration(
-                        labelText: 'Nombre del Cliente *',
+                        labelText: 'Customer Name *',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.person),
                       ),
@@ -353,7 +352,7 @@ class _CheckoutScreenState extends State<CheckoutScreen> {
                       controller: _notesController,
                       maxLines: 3,
                       decoration: InputDecoration(
-                        labelText: 'Notas (Opcional)',
+                        labelText: 'Notes (Optional)',
                         border: OutlineInputBorder(),
                         prefixIcon: Icon(Icons.note),
                       ),

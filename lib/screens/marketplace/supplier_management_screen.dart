@@ -29,7 +29,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
     try {
       final companyId = await InventoryService.getCurrentCompanyId();
       if (companyId == null) {
-        throw Exception('No se encontró la compañía');
+        throw Exception('Company not found');
       }
 
       // Obtener información del proveedor
@@ -98,7 +98,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Panel de Proveedor'),
+        title: const Text('Supplier Panel'),
         backgroundColor: const Color(0xFF2B5F8C),
         foregroundColor: Colors.white,
         bottom: TabBar(
@@ -106,7 +106,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
           onTap: (index) => setState(() => _selectedTab = index),
           tabs: const [
             Tab(icon: Icon(Icons.dashboard), text: 'Dashboard'),
-            Tab(icon: Icon(Icons.inventory), text: 'Productos'),
+            Tab(icon: Icon(Icons.inventory), text: 'Products'),
             Tab(icon: Icon(Icons.shopping_bag), text: 'Pedidos'),
           ],
         ),
@@ -125,7 +125,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
         onPressed: _showAddProductDialog,
         backgroundColor: const Color(0xFF6B8E3D),
         icon: const Icon(Icons.add),
-        label: const Text('Agregar Producto'),
+        label: const Text('Add Product'),
       )
           : null,
     );
@@ -156,7 +156,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
                       const SizedBox(width: 12),
                       Expanded(
                         child: Text(
-                          _supplierInfo?['name'] ?? 'Sin nombre',
+                          _supplierInfo?['name'] ?? 'No name',
                           style: const TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -170,7 +170,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
                   Row(
                     children: [
                       _buildStatusChip(
-                        isPublic ? 'Público' : 'Privado',
+                        isPublic ? 'Public' : 'Privado',
                         isPublic ? Colors.green : Colors.grey,
                         isPublic ? Icons.visibility : Icons.visibility_off,
                       ),
@@ -207,7 +207,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
                     child: ElevatedButton.icon(
                       onPressed: () => _togglePublicStatus(!isPublic),
                       icon: Icon(isPublic ? Icons.visibility_off : Icons.visibility),
-                      label: Text(isPublic ? 'Hacer Privado' : 'Hacer Público'),
+                      label: Text(isPublic ? 'Hacer Privado' : 'Make Public'),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: isPublic ? Colors.grey : const Color(0xFF6B8E3D),
                         foregroundColor: Colors.white,
@@ -225,7 +225,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'Productos',
+                  'Products',
                   '${_products.length}',
                   Icons.inventory,
                   const Color(0xFF6B8E3D),
@@ -247,7 +247,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
             children: [
               Expanded(
                 child: _buildStatCard(
-                  'Pendientes',
+                  'Pending',
                   '${_orders.where((o) => o['status'] == 'pending').length}',
                   Icons.pending,
                   Colors.orange,
@@ -285,7 +285,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
             ElevatedButton.icon(
               onPressed: _showAddProductDialog,
               icon: const Icon(Icons.add),
-              label: const Text('Agregar Primer Producto'),
+              label: const Text('Add First Product'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6B8E3D),
                 foregroundColor: Colors.white,
@@ -411,13 +411,13 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
               : const Icon(Icons.inventory, color: Colors.grey),
         ),
         title: Text(
-          product['nombre_producto'] ?? 'Sin nombre',
+          product['nombre_producto'] ?? 'No name',
           style: const TextStyle(fontWeight: FontWeight.bold),
         ),
         subtitle: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text('Q ${product['precio_base'] ?? 0}'),
+            Text('\$${product['precio_base'] ?? 0}'),
             Text(
               'Stock: ${product['stock_disponible'] ?? 0}',
               style: TextStyle(
@@ -449,9 +449,9 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
             ),
             PopupMenuButton(
               itemBuilder: (context) => [
-                const PopupMenuItem(value: 'edit', child: Text('Editar')),
+                const PopupMenuItem(value: 'edit', child: Text('Edit')),
                 const PopupMenuItem(value: 'toggle', child: Text('Activar/Desactivar')),
-                const PopupMenuItem(value: 'delete', child: Text('Eliminar')),
+                const PopupMenuItem(value: 'delete', child: Text('Delete')),
               ],
               onSelected: (value) => _handleProductAction(value, product),
             ),
@@ -506,7 +506,7 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
               children: [
                 Text('${order['total_productos']} productos'),
                 Text(
-                  'Q ${order['total'] ?? 0}',
+                  '\$${order['total'] ?? 0}',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,
@@ -523,11 +523,11 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
 
   String _getStatusText(String status) {
     switch (status) {
-      case 'pending': return 'Pendiente';
-      case 'confirmed': return 'Confirmado';
-      case 'shipped': return 'Enviado';
-      case 'delivered': return 'Entregado';
-      case 'cancelled': return 'Cancelado';
+      case 'pending': return 'Pending';
+      case 'confirmed': return 'Confirmed';
+      case 'shipped': return 'Shipped';
+      case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
       default: return status;
     }
   }
@@ -570,8 +570,8 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(makePublic
-                ? 'Catálogo ahora es público'
-                : 'Catálogo ahora es privado'),
+                ? 'Catalog is now public'
+                : 'Catalog is now private'),
             backgroundColor: const Color(0xFF6B8E3D),
           ),
         );
@@ -608,17 +608,17 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
     final confirmed = await showDialog<bool>(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Eliminar producto'),
-        content: Text('¿Eliminar ${product['nombre_producto']}?'),
+        title: const Text('Delete product'),
+        content: Text('Delete ${product['nombre_producto']}?'),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context, false),
-            child: const Text('Cancelar'),
+            child: const Text('Cancel'),
           ),
           ElevatedButton(
             onPressed: () => Navigator.pop(context, true),
             style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
-            child: const Text('Eliminar'),
+            child: const Text('Delete'),
           ),
         ],
       ),
@@ -645,14 +645,14 @@ class _SupplierManagementScreenState extends State<SupplierManagementScreen> {
   void _showAddProductDialog() {
     // TODO: Implementar diálogo de agregar producto
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Función por implementar')),
+      const SnackBar(content: Text('Feature to be implemented')),
     );
   }
 
   void _showEditProductDialog(Map<String, dynamic> product) {
     // TODO: Implementar diálogo de editar producto
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Función por implementar')),
+      const SnackBar(content: Text('Feature to be implemented')),
     );
   }
 }

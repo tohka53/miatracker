@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../../services/supply_company_service.dart';
+import '../../services/inventory_service.dart';
 import '../../widgets/collapsible_drawer.dart';
 
 class SupplyCompanyScreen extends StatefulWidget {
@@ -835,10 +836,132 @@ class _SupplierDetailScreenState extends State<SupplierDetailScreen> {
     );
   }
 
+  // 🔗 Enlazar productos sin proveedor a ESTE proveedor
+  Future<void> _showAddProductsSheet() async {
+    List<Map<String, dynamic>> products = [];
+    try {
+      products = await InventoryService.getProductsWithoutSupplier();
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error: $e')),
+        );
+      }
+      return;
+    }
+    if (!mounted) return;
+
+    if (products.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('All products already have a supplier')),
+      );
+      return;
+    }
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return Container(
+          decoration: BoxDecoration(
+            color: Theme.of(context).scaffoldBackgroundColor,
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+          ),
+          child: DraggableScrollableSheet(
+            initialChildSize: 0.7,
+            minChildSize: 0.4,
+            maxChildSize: 0.95,
+            expand: false,
+            builder: (context, scrollController) {
+              return Column(
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Row(
+                      children: [
+                        const Expanded(
+                          child: Text(
+                            'Link products to this supplier',
+                            style: TextStyle(
+                                fontSize: 18, fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close),
+                          onPressed: () => Navigator.pop(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Divider(height: 1),
+                  Expanded(
+                    child: ListView.builder(
+                      controller: scrollController,
+                      itemCount: products.length,
+                      itemBuilder: (context, index) {
+                        final product = products[index];
+                        return ListTile(
+                          leading: CircleAvatar(
+                            backgroundImage: product['imagen'] != null
+                                ? NetworkImage(product['imagen'])
+                                : null,
+                            child: product['imagen'] == null
+                                ? const Icon(Icons.inventory_2)
+                                : null,
+                          ),
+                          title:
+                              Text(product['nombre_producto'] ?? 'No name'),
+                          subtitle: Text('Stock: ${product['cantidad'] ?? 0}'),
+                          trailing: const Icon(Icons.add_link,
+                              color: Color(0xFF6B8E3D)),
+                          onTap: () async {
+                            try {
+                              await InventoryService.assignSupplierToProduct(
+                                product['id_inventario'],
+                                widget.supplier['id'],
+                              );
+                              if (context.mounted) Navigator.pop(context);
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                      content: Text(
+                                          '${product['nombre_producto']} linked')),
+                                );
+                              }
+                              _loadProducts();
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text('Error: $e')),
+                                );
+                              }
+                            }
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              );
+            },
+          ),
+        );
+      },
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3E8),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _showAddProductsSheet,
+        backgroundColor: const Color(0xFF6B8E3D),
+        foregroundColor: Colors.white,
+        icon: const Icon(Icons.add_link),
+        label: const Text('Link product'),
+      ),
       appBar: AppBar(
         title: Text(widget.supplier['name'] ?? 'Supplier'),
         backgroundColor: const Color(0xFF2B5F8C),

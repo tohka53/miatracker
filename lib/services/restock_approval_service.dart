@@ -186,73 +186,45 @@ class RestockApprovalService {
 
       if (kDebugMode) print('✅ Solicitud actualizada a APPROVED');
 
-      // PASO 7: OBTENER NOMBRE DE LA COMPAÑÍA
-      final companyInfo = await _supabase
-            .from('company')
-          .select('company_name')
-          .eq('id_company', companyId)
-          .single();
-
-      final companyName = companyInfo['name'] ?? 'Tu Compañía';
-
-      // PASO 8: INTENTAR ENVIAR EMAIL (SI TIENE EMAIL)
+      // PASO 7: NOTIFICAR A LOS TRES (proveedor con QR, solicitante y jefe)
       final result = <String, dynamic>{
         'success': true,
         'message': 'Solicitud aprobada exitosamente',
         'supplier_was_assigned': supplierWasAssigned,
-        'supplier_name': supplierData?['name'],
-        'supplier_id': supplierData?['id'],
+        'supplier_name': supplierData['name'],
+        'supplier_id': supplierData['id'],
         'has_email': false,
         'email_sent': false,
       };
 
-      final supplierEmail = supplierData?['email'];
-      final supplierName = supplierData?['name'] ?? 'Proveedor';
+      final supplierEmail = supplierData['email'];
+      result['has_email'] =
+          supplierEmail is String && supplierEmail.trim().isNotEmpty;
 
-      if (supplierEmail != null && (supplierEmail as String).isNotEmpty) {
-        result['has_email'] = true;
+      final notified = await EmailService.notifyRestockApproved(
+        requestId: requestId,
+        supplierId: supplierData['id'] as int,
+        companyId: companyId,
+        deliveryDate: estimatedDeliveryDate,
+        internalNotes: internalNotes,
+      );
 
-        if (kDebugMode) {
-          print('\n📧 Enviando email al proveedor...');
-          print('   Email: $supplierEmail');
-          print('   Nombre: $supplierName');
-        }
+      result['email_sent'] = notified['supplier'] == true;
+      result['notified_requester'] = notified['requester'] == true;
+      result['notified_admins'] = notified['admins'] == true;
+      result['supplier_email'] = supplierEmail;
 
-        // ✅ USAR EL MÉTODO CORRECTO
-        final emailResult = await EmailService.sendApprovalEmail(
-          toEmail: supplierEmail,
-          supplierName: supplierName,
-          productName: requestData['nombre_producto'],
-          quantity: requestData['cantidad_solicitada'],
-          companyName: companyName,
-          internalNotes: internalNotes,
-          estimatedDeliveryDate: estimatedDeliveryDate?.toIso8601String(),
-        );
-
-        result['email_sent'] = emailResult['success'] == true;
-        result['supplier_email'] = supplierEmail;
-
-        if (emailResult['success'] != true) {
-          result['email_error'] = emailResult['error'];
-          if (kDebugMode) {
-            print('⚠️ Email no enviado: ${emailResult['error']}');
-          }
-        } else {
-          if (kDebugMode) {
-            print('✅ Email enviado exitosamente');
-          }
-        }
-      } else {
-        if (kDebugMode) {
-          print('⚠️ Proveedor sin email, no se puede enviar notificación');
-        }
-        result['warning'] = 'Solicitud aprobada pero el proveedor no tiene email configurado';
+      if (result['has_email'] != true) {
+        result['warning'] =
+        'Solicitud aprobada pero el proveedor no tiene email configurado';
       }
 
       if (kDebugMode) {
         print('\n✅ ===== APROBACIÓN COMPLETADA =====');
-        print('   Proveedor asignado: ${result['supplier_was_assigned']}');
-        print('   Email enviado: ${result['email_sent']}');
+        print('   Proveedor asignado : ${result['supplier_was_assigned']}');
+        print('   Correo proveedor   : ${result['email_sent']}');
+        print('   Correo solicitante : ${result['notified_requester']}');
+        print('   Correo jefe/admins : ${result['notified_admins']}');
         print('===================================\n');
       }
 
@@ -342,57 +314,32 @@ class RestockApprovalService {
         print('   Supplier ID final: $finalSupplierId');
       }
 
-      // Intentar enviar email si hay proveedor con email
-      if (finalSupplierId != null) {
-        final supplierData = await _supabase
-            .from('supply_company')
-            .select('*')
-            .eq('id', finalSupplierId)
-            .eq('id_company', companyId)
-            .maybeSingle();
+      // 📧 Notificar a los tres: solicitante (con el motivo), jefe/admins y
+      // proveedor. Antes solo se avisaba al proveedor, y si no había proveedor
+      // no salía ningún correo: quien pidió la orden nunca se enteraba.
+      final notified = await EmailService.notifyRestockRejected(
+        requestId: requestId,
+        companyId: companyId,
+        reason: reason,
+        supplierId: finalSupplierId as int?,
+      );
 
-        if (supplierData != null && supplierData['email'] != null && (supplierData['email'] as String).isNotEmpty) {
-          final companyInfo = await _supabase
-              .from('company')
-              .select('company_name')
-              .eq('id_company', companyId)
-              .single();
+      result['email_sent'] = notified['supplier'] == true;
+      result['notified_requester'] = notified['requester'] == true;
+      result['notified_admins'] = notified['admins'] == true;
 
-          if (kDebugMode) {
-            print('📧 Enviando email de rechazo...');
-            print('   Email: ${supplierData['email']}');
-            print('   Proveedor: ${supplierData['name']}');
-          }
-
-          final emailResult = await EmailService.sendRejectionEmail(
-            toEmail: supplierData['email'],
-            supplierName: supplierData['name'] ?? 'Proveedor',
-            productName: requestData['nombre_producto'],
-            quantity: requestData['cantidad_solicitada'],
-            companyName: companyInfo['name'] ?? 'Tu Compañía',
-            rejectionReason: reason,
-          );
-
-          result['email_sent'] = emailResult['success'] == true;
-          result['supplier_email'] = supplierData['email'];
-          result['supplier_name'] = supplierData['name'];
-
-          if (emailResult['success'] == true) {
-            if (kDebugMode) print('✅ Email de rechazo enviado');
-          } else {
-            if (kDebugMode) print('⚠️ Error enviando email: ${emailResult['error']}');
-            result['email_error'] = emailResult['error'];
-          }
-        } else {
-          if (kDebugMode) print('⚠️ Proveedor sin email configurado');
-          result['warning'] = 'Solicitud rechazada pero el proveedor no tiene email';
-        }
-      } else {
-        if (kDebugMode) print('⚠️ No hay proveedor asignado para enviar email');
-        result['warning'] = 'Solicitud rechazada pero no hay proveedor para notificar';
+      if (finalSupplierId == null) {
+        result['warning'] =
+        'Solicitud rechazada; no hay proveedor asignado al que notificar';
+      } else if (notified['supplier'] != true) {
+        result['warning'] =
+        'Solicitud rechazada pero no se pudo notificar al proveedor';
       }
 
       if (kDebugMode) {
+        print('   Correo proveedor   : ${result['email_sent']}');
+        print('   Correo solicitante : ${result['notified_requester']}');
+        print('   Correo jefe/admins : ${result['notified_admins']}');
         print('===================================\n');
       }
 
@@ -598,15 +545,15 @@ class RestockApprovalService {
   static String getStatusText(String? status) {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return 'Pendiente';
+        return 'Pending';
       case 'approved':
-        return 'Aprobada';
+        return 'Approved';
       case 'rejected':
-        return 'Rechazada';
+        return 'Rejected';
       case 'completed':
-        return 'Completada';
+        return 'Completed';
       case 'cancelled':
-        return 'Cancelada';
+        return 'Cancelled';
       default:
         return 'Desconocido';
     }

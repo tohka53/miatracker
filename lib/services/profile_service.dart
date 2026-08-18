@@ -176,7 +176,16 @@ class ProfileService {
   static Future<bool> isUserAdmin() async {
     try {
       final role = await getUserRole();
-      return role == 'admin';
+      return role == 'admin' || role == 'super_admin';
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Super administrador: ve TODAS las compañías (bypass del filtro por compañía)
+  static Future<bool> isSuperAdmin() async {
+    try {
+      return (await getUserRole()) == 'super_admin';
     } catch (e) {
       return false;
     }

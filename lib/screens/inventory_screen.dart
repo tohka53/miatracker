@@ -17,6 +17,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
 import 'package:qr_flutter/qr_flutter.dart';
 
 import '../services/cart_service.dart';
+import '../services/email_service.dart';
 import '../services/image_service.dart';
 import '../services/inventory_service.dart';
 import '../services/profile_service.dart';
@@ -94,7 +95,7 @@ class _InventoryScreenState extends State<InventoryScreen> {
     }
   }
 
-  bool get _canEdit => _userRole == 'admin' || _userRole == 'supervisor';
+  bool get _canEdit => _userRole == 'admin' || _userRole == 'supervisor' || _userRole == 'super_admin';
 
   Future<void> _loadInitialData() async {
     setState(() => _isInitialLoading = true);
@@ -2178,6 +2179,11 @@ class _RestockDialogState extends State<_RestockDialog> {
   String _selectedPriority = 'normal';
   bool _isLoading = false;
 
+  /// Item Number = código de barras del producto. Es la MISMA referencia que
+  /// se manda en el correo, para poder cruzar la solicitud sin ambigüedad.
+  String? get _itemNumber =>
+      EmailService.extractItemNumber(widget.item['codigo_barras']);
+
   @override
   void initState() {
     super.initState();
@@ -2259,6 +2265,26 @@ class _RestockDialogState extends State<_RestockDialog> {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                             ),
+                            if (_itemNumber != null) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.25),
+                                  borderRadius: BorderRadius.circular(6),
+                                ),
+                                child: Text(
+                                  'Item # $_itemNumber',
+                                  style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    letterSpacing: 0.5,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ],
                         ),
                       ),

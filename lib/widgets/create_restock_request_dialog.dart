@@ -4,7 +4,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import '../services/restock_request_service.dart';
-import '../services/restock_request_service.dart';
 /// Muestra un diálogo para crear una solicitud de restock
 ///
 /// [product]: Datos del producto (debe incluir id_inventario, nombre_producto, cantidad)
@@ -89,14 +88,14 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
       if (result['success'] == true) {
         if (mounted) {
           _showSuccessSnackBar(
-            result['message'] ?? 'Solicitud creada exitosamente',
+            result['message'] ?? 'Request created successfully',
           );
 
           // Si el producto no tiene proveedor, avisar
           if (result['has_supplier'] != true) {
             _showWarningDialog(
               'El producto no tiene proveedor asignado. '
-                  'Un administrador deberá asignarlo antes de aprobar la solicitud.',
+                  'An administrator must assign it before approving the request.',
             );
           }
 
@@ -105,7 +104,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
       } else {
         if (mounted) {
           _showErrorSnackBar(
-            result['error'] ?? 'Error al crear solicitud',
+            result['error'] ?? 'Error creating request',
           );
         }
         setState(() => _isCreating = false);
@@ -210,7 +209,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
           ? [
         TextButton(
           onPressed: () => Navigator.of(context).pop(false),
-          child: const Text('Cerrar'),
+          child: const Text('Close'),
         ),
       ]
           : [
@@ -218,7 +217,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
           onPressed: _isCreating
               ? null
               : () => Navigator.of(context).pop(false),
-          child: const Text('Cancelar'),
+          child: const Text('Cancel'),
         ),
         ElevatedButton.icon(
           onPressed: _isCreating ? null : _createRequest,
@@ -232,7 +231,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
             ),
           )
               : const Icon(Icons.send),
-          label: Text(_isCreating ? 'Creando...' : 'Crear Solicitud'),
+          label: Text(_isCreating ? 'Creando...' : 'Create Request'),
           style: ElevatedButton.styleFrom(
             backgroundColor: const Color(0xFF6B8E3D),
             foregroundColor: Colors.white,
@@ -243,7 +242,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
   }
 
   Widget _buildErrorContent() {
-    final error = _validationResult?['error'] ?? 'Error desconocido';
+    final error = _validationResult?['error'] ?? 'Unknown error';
     final isWarning = _validationResult?['warning'] == true;
 
     return Column(
@@ -268,7 +267,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
   }
 
   Widget _buildFormContent() {
-    final productName = widget.product['nombre_producto'] ?? 'Producto';
+    final productName = widget.product['nombre_producto'] ?? 'Product';
     final currentStock = widget.product['cantidad'] ?? 0;
 
     return Form(
@@ -331,19 +330,19 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
                 FilteringTextInputFormatter.digitsOnly,
               ],
               decoration: const InputDecoration(
-                labelText: 'Cantidad a solicitar *',
+                labelText: 'Quantity to request *',
                 hintText: 'Ej: 100',
                 prefixIcon: Icon(Icons.numbers),
                 border: OutlineInputBorder(),
-                helperText: 'Cantidad de unidades que necesitas',
+                helperText: 'Number of units you need',
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'Ingresa la cantidad';
+                  return 'Enter the quantity';
                 }
                 final quantity = int.tryParse(value);
                 if (quantity == null || quantity <= 0) {
-                  return 'Debe ser un número mayor a 0';
+                  return 'Must be a number greater than 0';
                 }
                 return null;
               },
@@ -356,7 +355,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Text(
-                  'Prioridad',
+                  'Priority',
                   style: TextStyle(
                     fontSize: 14,
                     fontWeight: FontWeight.w500,
@@ -385,10 +384,10 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
               maxLength: 500,
               decoration: const InputDecoration(
                 labelText: 'Notas (opcional)',
-                hintText: 'Motivo de la solicitud, detalles adicionales...',
+                hintText: 'Reason for the request, additional details...',
                 prefixIcon: Icon(Icons.note_outlined),
                 border: OutlineInputBorder(),
-                helperText: 'Información adicional sobre la solicitud',
+                helperText: 'Additional information about the request',
               ),
             ),
 
@@ -408,7 +407,7 @@ class _CreateRestockRequestDialogState extends State<CreateRestockRequestDialog>
                   const SizedBox(width: 12),
                   Expanded(
                     child: Text(
-                      'La solicitud será revisada por un administrador',
+                      'The request will be reviewed by an administrator',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.blue[900],

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import '../../services/inventory_service.dart';
-import '../../services/supply_company_service.dart';
 import '../../widgets/collapsible_drawer.dart';
 
 /// Dashboard with supplier statistics and inventory value

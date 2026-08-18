@@ -71,7 +71,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
         appBar: AppBar(
           leading: const SizedBox.shrink(), // Oculta el botón back
           title: const Text(
-            'Marketplace de Proveedores',
+            'Supplier Marketplace',
             style: TextStyle(fontWeight: FontWeight.bold),
           ),
           backgroundColor: const Color(0xFF2B5F8C),
@@ -80,7 +80,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
             IconButton(
               icon: const Icon(Icons.refresh),
               onPressed: _loadData,
-              tooltip: 'Actualizar',
+              tooltip: 'Refresh',
             ),
           ],
           // ✅ CORREGIDO: Agregado controller al TabBar
@@ -90,8 +90,8 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
             labelColor: Colors.white,
             unselectedLabelColor: Colors.white70,
             tabs: const [
-              Tab(icon: Icon(Icons.store), text: 'Proveedores'),
-              Tab(icon: Icon(Icons.inventory), text: 'Mis Productos'),
+              Tab(icon: Icon(Icons.store), text: 'Suppliers'),
+              Tab(icon: Icon(Icons.inventory), text: 'My Products'),
             ],
           ),
         ),
@@ -120,7 +120,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
             Icon(Icons.store_outlined, size: 80, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
-              'No hay proveedores disponibles',
+              'No suppliers available',
               style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 24),
@@ -187,7 +187,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          supplier['name'] ?? 'Sin nombre',
+                          supplier['name'] ?? 'No name',
                           style: const TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
@@ -237,7 +237,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
                   TextButton.icon(
                     onPressed: () => _openSupplierCatalog(supplier),
                     icon: const Icon(Icons.arrow_forward, size: 18),
-                    label: const Text('Ver Catálogo'),
+                    label: const Text('View Catalog'),
                     style: TextButton.styleFrom(
                       foregroundColor: const Color(0xFF6B8E3D),
                     ),
@@ -260,7 +260,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
             Icon(Icons.inventory_outlined, size: 80, color: Colors.grey.shade400),
             const SizedBox(height: 16),
             Text(
-              'No has importado productos aún',
+              'You have not imported products yet',
               style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
             ),
             const SizedBox(height: 8),
@@ -272,7 +272,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
             ElevatedButton.icon(
               onPressed: () => _tabController.animateTo(0), // Ir a tab de proveedores
               icon: const Icon(Icons.store),
-              label: const Text('Explorar Proveedores'),
+              label: const Text('Browse Suppliers'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6B8E3D),
                 foregroundColor: Colors.white,
@@ -344,7 +344,7 @@ class _SupplyMarketplaceScreenState extends State<SupplyMarketplaceScreen>
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    product['nombre_producto'] ?? 'Sin nombre',
+                    product['nombre_producto'] ?? 'No name',
                     style: const TextStyle(
                       fontSize: 14,
                       fontWeight: FontWeight.bold,
@@ -471,7 +471,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3E8),
       appBar: AppBar(
-        title: Text(widget.supplier['name'] ?? 'Catálogo'),
+        title: Text(widget.supplier['name'] ?? 'Catalog'),
         backgroundColor: const Color(0xFF2B5F8C),
         foregroundColor: Colors.white,
       ),
@@ -500,7 +500,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
       child: ListView(
         scrollDirection: Axis.horizontal,
         children: [
-          _buildCategoryChip('Todos', null),
+          _buildCategoryChip('All', null),
           ..._categories.map((cat) => _buildCategoryChip(cat, cat)),
         ],
       ),
@@ -533,7 +533,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
           Icon(Icons.inventory_2_outlined, size: 80, color: Colors.grey.shade400),
           const SizedBox(height: 16),
           Text(
-            'No hay productos disponibles',
+            'No products available',
             style: TextStyle(fontSize: 16, color: Colors.grey.shade600),
           ),
         ],
@@ -583,14 +583,14 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
         ? product['precio_base']
         : double.tryParse(product['precio_base'].toString()) ?? 0.0;
     final stock = product['stock_disponible'] ?? 0;
-    final nombreProducto = product['nombre_producto'] ?? 'Sin nombre';
+    final nombreProducto = product['nombre_producto'] ?? 'No name';
 
     // 🔍 DEBUG - Quitar después de verificar
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
-    debugPrint('📦 Producto: $nombreProducto');
+    debugPrint('📦 Product: $nombreProducto');
     debugPrint('📊 Tipo de imagen: ${imagenData.runtimeType}');
     debugPrint('📊 Datos de imagen: $imagenData');
-    debugPrint('🖼️ URL extraída: $imageUrl');
+    debugPrint('🖼️ Extracted URL: $imageUrl');
     debugPrint('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
 
     return Card(
@@ -617,7 +617,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
                     children: [
                       Icon(Icons.inventory_2, size: 28, color: Colors.grey),
                       SizedBox(height: 4),
-                      Text('Sin imagen', style: TextStyle(fontSize: 8, color: Colors.grey)),
+                      Text('No image', style: TextStyle(fontSize: 8, color: Colors.grey)),
                     ],
                   ),
                 ),
@@ -642,7 +642,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
                   ),
                   const SizedBox(height: 2),
                   Text(
-                    'Q ${price.toStringAsFixed(2)}',
+                    '\$${price.toStringAsFixed(2)}',
                     style: const TextStyle(
                       fontSize: 12,
                       fontWeight: FontWeight.bold,
@@ -651,7 +651,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
                   ),
                   const SizedBox(height: 1),
                   Text(
-                    stock > 0 ? 'Stock: $stock' : 'Sin stock',
+                    stock > 0 ? 'Stock: $stock' : 'Out of stock',
                     style: TextStyle(
                       fontSize: 8,
                       color: stock > 0 ? Colors.green.shade700 : Colors.red.shade700,
@@ -758,7 +758,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
                 ),
                 const SizedBox(height: 20),
                 Text(
-                  product['nombre'] ?? 'Sin nombre',
+                  product['nombre'] ?? 'No name',
                   style: const TextStyle(
                     fontSize: 22,
                     fontWeight: FontWeight.bold,
@@ -777,7 +777,7 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
                 if (product['descripcion'] != null &&
                     product['descripcion'].toString().isNotEmpty) ...[
                   const Text(
-                    'Descripción:',
+                    'Description:',
                     style: TextStyle(
                       fontSize: 16,
                       fontWeight: FontWeight.bold,
@@ -813,13 +813,13 @@ class _SupplierCatalogScreenState extends State<SupplierCatalogScreen> {
                       // TODO: Agregar al carrito del marketplace
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Producto agregado al carrito'),
+                          content: Text('Product added to cart'),
                           backgroundColor: Color(0xFF6B8E3D),
                         ),
                       );
                     },
                     icon: const Icon(Icons.add_shopping_cart),
-                    label: const Text('Agregar al Carrito'),
+                    label: const Text('Add to Cart'),
                     style: ElevatedButton.styleFrom(
                       backgroundColor: const Color(0xFF6B8E3D),
                       foregroundColor: Colors.white,

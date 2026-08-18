@@ -124,9 +124,9 @@ enum ProductStatus {
   String get displayName {
     switch (this) {
       case ProductStatus.active:
-        return 'Activo';
+        return 'Active';
       case ProductStatus.inactive:
-        return 'Inactivo';
+        return 'Inactive';
       case ProductStatus.outOfStock:
         return 'Agotado';
       case ProductStatus.discontinued:
@@ -182,19 +182,19 @@ enum OrderStatus {
   String get displayName {
     switch (this) {
       case OrderStatus.pending:
-        return 'Pendiente';
+        return 'Pending';
       case OrderStatus.confirmed:
-        return 'Confirmado';
+        return 'Confirmed';
       case OrderStatus.processing:
-        return 'Procesando';
+        return 'Processing';
       case OrderStatus.shipped:
-        return 'Enviado';
+        return 'Shipped';
       case OrderStatus.delivered:
-        return 'Entregado';
+        return 'Delivered';
       case OrderStatus.cancelled:
-        return 'Cancelado';
+        return 'Cancelled';
       case OrderStatus.refunded:
-        return 'Reembolsado';
+        return 'Refunded';
     }
   }
 

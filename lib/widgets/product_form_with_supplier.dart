@@ -84,8 +84,8 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(widget.product != null
-                ? 'Producto actualizado'
-                : 'Producto creado'),
+                ? 'Product updated'
+                : 'Product created'),
           ),
         );
         Navigator.pop(context, true);
@@ -108,8 +108,8 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.product != null
-            ? 'Editar Producto'
-            : 'Nuevo Producto'),
+            ? 'Edit Product'
+            : 'New Product'),
         actions: [
           IconButton(
             icon: const Icon(Icons.save),
@@ -124,7 +124,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
           children: [
             // Información básica
             Text(
-              'Información básica',
+              'Basic information',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -134,13 +134,13 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
             TextFormField(
               controller: _nombreController,
               decoration: const InputDecoration(
-                labelText: 'Nombre del producto *',
+                labelText: 'Product name *',
                 prefixIcon: Icon(Icons.inventory_2),
                 border: OutlineInputBorder(),
               ),
               validator: (value) {
                 if (value == null || value.trim().isEmpty) {
-                  return 'El nombre es requerido';
+                  return 'Name is required';
                 }
                 return null;
               },
@@ -151,7 +151,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
             TextFormField(
               controller: _descripcionController,
               decoration: const InputDecoration(
-                labelText: 'Descripción',
+                labelText: 'Description',
                 prefixIcon: Icon(Icons.description),
                 border: OutlineInputBorder(),
               ),
@@ -161,7 +161,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
 
             // Cantidad y precio
             Text(
-              'Cantidad y precio',
+              'Quantity and price',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -174,7 +174,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                   child: TextFormField(
                     controller: _cantidadController,
                     decoration: const InputDecoration(
-                      labelText: 'Cantidad',
+                      labelText: 'Quantity',
                       prefixIcon: Icon(Icons.inventory),
                       border: OutlineInputBorder(),
                     ),
@@ -185,7 +185,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                         return 'Requerido';
                       }
                       if (int.tryParse(value) == null) {
-                        return 'Número inválido';
+                        return 'Invalid number';
                       }
                       return null;
                     },
@@ -207,7 +207,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                         return 'Requerido';
                       }
                       if (int.tryParse(value) == null) {
-                        return 'Número inválido';
+                        return 'Invalid number';
                       }
                       return null;
                     },
@@ -220,10 +220,10 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
             TextFormField(
               controller: _precioController,
               decoration: const InputDecoration(
-                labelText: 'Precio unitario',
+                labelText: 'Unit price',
                 prefixIcon: Icon(Icons.attach_money),
                 border: OutlineInputBorder(),
-                prefixText: 'Q ',
+                prefixText: '\$ ',
               ),
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
               inputFormatters: [
@@ -231,10 +231,10 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
               ],
               validator: (value) {
                 if (value == null || value.isEmpty) {
-                  return 'El precio es requerido';
+                  return 'Price is required';
                 }
                 if (double.tryParse(value) == null) {
-                  return 'Precio inválido';
+                  return 'Invalid price';
                 }
                 return null;
               },
@@ -243,14 +243,14 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
 
             // Proveedor
             Text(
-              'Proveedor',
+              'Supplier',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
             ),
             const SizedBox(height: 8),
             Text(
-              'Selecciona el proveedor de este producto (opcional)',
+              'Select the supplier for this product (optional)',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
                 color: Colors.grey[600],
               ),
@@ -263,13 +263,13 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
               onSupplierSelected: (supplierId) {
                 setState(() => _selectedSupplierId = supplierId);
               },
-              label: 'Seleccionar proveedor (opcional)',
+              label: 'Select supplier (optional)',
             ),
             const SizedBox(height: 24),
 
             // Ubicación (aquí iría el LocationSelector si lo tienes)
             Text(
-              'Ubicación',
+              'Location',
               style: Theme.of(context).textTheme.titleLarge?.copyWith(
                 fontWeight: FontWeight.bold,
               ),
@@ -283,14 +283,14 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                   Icons.location_on,
                   color: Theme.of(context).colorScheme.primary,
                 ),
-                title: const Text('Seleccionar ubicación'),
-                subtitle: const Text('Opcional'),
+                title: const Text('Select location'),
+                subtitle: const Text('Optional'),
                 trailing: const Icon(Icons.arrow_forward_ios, size: 16),
                 onTap: () {
                   // Aquí iría la lógica para seleccionar ubicación
                   ScaffoldMessenger.of(context).showSnackBar(
                     const SnackBar(
-                      content: Text('Selector de ubicación no implementado'),
+                      content: Text('Location selector not implemented'),
                     ),
                   );
                 },
@@ -311,7 +311,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                 ),
               )
                   : const Icon(Icons.save),
-              label: Text(widget.product != null ? 'Actualizar' : 'Guardar'),
+              label: Text(widget.product != null ? 'Update' : 'Save'),
               style: FilledButton.styleFrom(
                 padding: const EdgeInsets.all(16),
               ),
@@ -329,7 +329,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        'Resumen',
+                        'Summary',
                         style: Theme.of(context).textTheme.titleMedium?.copyWith(
                           fontWeight: FontWeight.bold,
                         ),
@@ -338,7 +338,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Cantidad:'),
+                          const Text('Quantity:'),
                           Text(
                             _cantidadController.text,
                             style: const TextStyle(fontWeight: FontWeight.bold),
@@ -348,7 +348,7 @@ class _ProductFormWithSupplierState extends State<ProductFormWithSupplier> {
                       Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text('Precio unitario:'),
+                          const Text('Unit price:'),
                           Text(
                             InventoryService.formatPrice(
                                 double.tryParse(_precioController.text) ?? 0),
@@ -440,7 +440,7 @@ class ProductCardWithSupplier extends StatelessWidget {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          product['nombre_producto'] ?? 'Sin nombre',
+                          product['nombre_producto'] ?? 'No name',
                           style: Theme.of(context).textTheme.titleMedium?.copyWith(
                             fontWeight: FontWeight.bold,
                           ),
@@ -487,7 +487,7 @@ class ProductCardWithSupplier extends StatelessWidget {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'Proveedor',
+                            'Supplier',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[600],

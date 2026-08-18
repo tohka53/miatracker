@@ -32,7 +32,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     return Scaffold(
       backgroundColor: const Color(0xFFF5F3E8),
       appBar: AppBar(
-        title: Text('Orden ${_getOrderNumber()}'),
+        title: Text('Order ${_getOrderNumber()}'),
         actions: [
           if (widget.isSupplierView && _canUpdateStatus())
             IconButton(
@@ -106,7 +106,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Estado del Pedido',
+                    'Order Status',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 12,
@@ -140,7 +140,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Información del Pedido',
+              'Order Information',
               style: TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
@@ -149,13 +149,13 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             const SizedBox(height: 16),
             _buildInfoRow(
               Icons.confirmation_number,
-              'Número de Orden',
+              'Order Number',
               _getOrderNumber(),
             ),
             const Divider(height: 24),
             _buildInfoRow(
               Icons.calendar_today,
-              'Fecha',
+              'Date',
               MarketplaceFormatters.formatDateTime(
                 DateTime.parse(_order['created_at']),
               ),
@@ -163,16 +163,16 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             const Divider(height: 24),
             _buildInfoRow(
               Icons.business,
-              widget.isSupplierView ? 'Comprador' : 'Proveedor',
+              widget.isSupplierView ? 'Comprador' : 'Supplier',
               widget.isSupplierView
                   ? (_order['buyer_company_name'] ?? 'Cliente')
-                  : (_order['supplier_company_name'] ?? 'Proveedor'),
+                  : (_order['supplier_company_name'] ?? 'Supplier'),
             ),
             if (_order['tracking_number'] != null) ...[
               const Divider(height: 24),
               _buildInfoRow(
                 Icons.local_shipping,
-                'Número de Rastreo',
+                'Tracking Number',
                 _order['tracking_number'],
               ),
             ],
@@ -228,7 +228,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 const Text(
-                  'Productos',
+                  'Products',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -298,7 +298,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  item['product_name'] ?? 'Producto',
+                  item['product_name'] ?? 'Product',
                   style: const TextStyle(
                     fontWeight: FontWeight.w600,
                     fontSize: 14,
@@ -351,7 +351,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             ],
             if (shipping > 0) ...[
               const SizedBox(height: 8),
-              _buildTotalRow('Envío', shipping, false),
+              _buildTotalRow('Shipping', shipping, false),
             ],
             if (discount > 0) ...[
               const SizedBox(height: 8),
@@ -402,7 +402,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
                 Icon(Icons.note, color: Color(0xFF2B5F8C)),
                 SizedBox(width: 8),
                 Text(
-                  'Notas del Pedido',
+                  'Order Notes',
                   style: TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.bold,
@@ -432,7 +432,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             child: ElevatedButton.icon(
               onPressed: () => _updateOrderStatus('confirmed'),
               icon: const Icon(Icons.check_circle),
-              label: const Text('Confirmar Pedido'),
+              label: const Text('Confirm Order'),
               style: ElevatedButton.styleFrom(
                 backgroundColor: const Color(0xFF6B8E3D),
                 foregroundColor: Colors.white,
@@ -461,7 +461,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
             child: OutlinedButton.icon(
               onPressed: () => _confirmCancellation(),
               icon: const Icon(Icons.cancel),
-              label: const Text('Cancelar Pedido'),
+              label: const Text('Cancel Order'),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.red,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -517,7 +517,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               const Padding(
                 padding: EdgeInsets.all(16),
                 child: Text(
-                  'Actualizar Estado',
+                  'Update Status',
                   style: TextStyle(
                     fontSize: 18,
                     fontWeight: FontWeight.bold,
@@ -526,7 +526,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.check_circle, color: Color(0xFF6B8E3D)),
-                title: const Text('Confirmar'),
+                title: const Text('Confirm'),
                 onTap: () {
                   Navigator.pop(context);
                   _updateOrderStatus('confirmed');
@@ -550,7 +550,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               ),
               ListTile(
                 leading: const Icon(Icons.done_all, color: Colors.green),
-                title: const Text('Entregado'),
+                title: const Text('Delivered'),
                 onTap: () {
                   Navigator.pop(context);
                   _updateOrderStatus('delivered');
@@ -559,7 +559,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               const Divider(),
               ListTile(
                 leading: const Icon(Icons.cancel, color: Colors.red),
-                title: const Text('Cancelar Pedido'),
+                title: const Text('Cancel Order'),
                 onTap: () {
                   Navigator.pop(context);
                   _confirmCancellation();
@@ -589,7 +589,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Estado actualizado exitosamente'),
+            content: Text('Status updated successfully'),
             backgroundColor: Color(0xFF6B8E3D),
           ),
         );
@@ -611,10 +611,10 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
-        title: const Text('Cancelar Pedido'),
+        title: const Text('Cancel Order'),
         content: const Text(
-          '¿Estás seguro de que deseas cancelar este pedido? '
-              'Esta acción no se puede deshacer.',
+          'Are you sure you want to cancel this order? '
+              'This action cannot be undone.',
         ),
         actions: [
           TextButton(
@@ -627,7 +627,7 @@ class _OrderDetailsScreenState extends State<OrderDetailsScreen> {
               _updateOrderStatus('cancelled');
             },
             child: const Text(
-              'Sí, Cancelar',
+              'Yes, Cancel',
               style: TextStyle(color: Colors.red),
             ),
           ),

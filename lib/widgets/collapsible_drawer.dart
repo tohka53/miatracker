@@ -3,8 +3,6 @@ import '../screens/qr_complete_order_screen.dart';
 import '../services/auth_service.dart';
 import '../services/cart_service.dart';
 import '../services/marketplace_cart_service.dart';
-import '../services/profile_service.dart';
-import '../widgets/mia_logo.dart';
 import '../screens/inventory_screen.dart';
 import '../screens/shopping_cart_screen.dart';
 import '../screens/transfer_screen.dart';
@@ -115,7 +113,7 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
   // 🆕 Verificadores de roles
   bool get _isUser => _userRole == 'user';
   bool get _isSupervisor => _userRole == 'supervisor';
-  bool get _isAdmin => _userRole == 'admin';
+  bool get _isAdmin => _userRole == 'admin' || _userRole == 'super_admin';
   bool get _isAdminOrSupervisor => _isAdmin || _isSupervisor;
 
   void _onCartChanged() {

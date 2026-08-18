@@ -45,7 +45,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
     if (_reasonController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor ingresa la razón del rechazo'),
+          content: Text('Please enter the rejection reason'),
           backgroundColor: Colors.red,
         ),
       );
@@ -102,7 +102,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Rechazar Solicitud',
+                          'Reject Request',
                           style: TextStyle(
                             fontSize: 20,
                             fontWeight: FontWeight.bold,
@@ -110,7 +110,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          '¿Estás seguro de rechazar esta solicitud?',
+                          'Are you sure you want to reject this request?',
                           style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                         ),
                       ],
@@ -154,7 +154,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
 
               // ✅ SELECTOR DE PROVEEDOR (IDÉNTICO A APROBACIÓN)
               Text(
-                'Proveedor *',
+                'Supplier *',
                 style: TextStyle(
                   fontSize: 12,
                   fontWeight: FontWeight.bold,
@@ -186,7 +186,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                   title: Text(
                     selectedSupplier != null
                         ? selectedSupplier!['name']
-                        : 'Seleccionar Proveedor',
+                        : 'Select Supplier',
                     style: TextStyle(
                       fontWeight:
                       selectedSupplier != null ? FontWeight.bold : FontWeight.normal,
@@ -228,7 +228,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                     ],
                   )
                       : const Text(
-                    'Requerido para enviar notificación',
+                    'Required to send notification',
                     style: TextStyle(
                       color: Colors.red,
                       fontSize: 12,
@@ -239,7 +239,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                       ? IconButton(
                     icon: const Icon(Icons.clear, color: Colors.grey),
                     onPressed: () => setState(() => selectedSupplier = null),
-                    tooltip: 'Limpiar selección',
+                    tooltip: 'Clear selection',
                   )
                       : const Icon(Icons.arrow_forward_ios, size: 16, color: Colors.red),
                   onTap: () async {
@@ -283,7 +283,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
 
               // RAZÓN DEL RECHAZO
               const Text(
-                'Razón del rechazo *',
+                'Rejection reason *',
                 style: TextStyle(
                   fontSize: 14,
                   fontWeight: FontWeight.w600,
@@ -296,9 +296,9 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                 maxLines: 3,
                 enabled: !_isSubmitting,
                 decoration: const InputDecoration(
-                  labelText: 'Razón del rechazo (opcional)',
+                  labelText: 'Rejection reason (optional)',
                   border: OutlineInputBorder(),
-                  hintText: 'Explica por qué se rechaza',
+                  hintText: 'Explain why it is rejected',
                   prefixIcon: Icon(Icons.notes),
                 ),
               ),
@@ -311,7 +311,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                 children: [
                   TextButton(
                     onPressed: _isSubmitting ? null : () => Navigator.pop(context),
-                    child: const Text('Cancelar'),
+                    child: const Text('Cancel'),
                   ),
                   const SizedBox(width: 12),
                   ElevatedButton(
@@ -335,7 +335,7 @@ class _RejectRestockDialogState extends State<RejectRestockDialog> {
                         strokeWidth: 2,
                       ),
                     )
-                        : const Text('Rechazar'),
+                        : const Text('Reject'),
                   ),
                 ],
               ),

@@ -1,0 +1,1786 @@
+diff --git a/DEEP_LINKS_SETUP.md b/DEEP_LINKS_SETUP.md
+new file mode 100644
+index 0000000..8953f3d
+--- /dev/null
++++ b/DEEP_LINKS_SETUP.md
+@@ -0,0 +1,188 @@
++# Abrir la orden desde el correo — en web, Android e iOS
++
++Los botones de los correos ya apuntan a:
++
++```
++https://www.miatracker.com/app/#/restock-management?request=<ID>
++```
++
++**Web ya funciona** con solo desplegar. Lo de abajo es lo que falta para que ese
++mismo enlace abra la **app instalada** en el celular (App Links en Android,
++Universal Links en iOS) en vez del navegador.
++
++No se usa un esquema propio tipo `miatracker://`: un enlace `https` normal abre
++la app si está instalada y el navegador si no. Un solo botón para los tres casos.
++
++---
++
++## Paso 0 — Desplegar el sitio (esto solo ya arregla la web)
++
++En el repo `miatrackerweb` ya quedaron:
++
++- `public/.well-known/apple-app-site-association`
++- `public/.well-known/assetlinks.json`
++- `vercel.json` — el rewrite catch-all ahora **excluye** `/.well-known/...`
++  (antes se lo comía y devolvía el HTML de Angular)
++- `angular.json` — se agregó un glob explícito para `.well-known/**`, porque el
++  glob `**/*` de Angular **no copia carpetas que empiezan con punto**
++
++Después de desplegar, verificar que devuelven JSON y no HTML:
++
++```bash
++curl -i https://www.miatracker.com/.well-known/apple-app-site-association
++curl -i https://www.miatracker.com/.well-known/assetlinks.json
++```
++
++Ambos deben responder `200` con `Content-Type: application/json`.
++
++---
++
++## Paso 1 — Datos que faltan
++
++### Android: el SHA-256 del keystore
++
++`android/app/build.gradle.kts` firma release con la **clave de debug**:
++
++```kotlin
++buildTypes {
++    release {
++        // TODO: Add your own signing config for the release build.
++        signingConfig = signingConfigs.getByName("debug")
++    }
++}
++```
++
++Para el APK que estás distribuyendo hoy, el fingerprint es el de debug:
++
++```bash
++keytool -list -v -alias androiddebugkey \
++  -keystore ~/.android/debug.keystore \
++  -storepass android -keypass android | grep SHA256
++```
++
++Copiá ese valor (formato `AB:CD:EF:...`) dentro de
++`miatrackerweb/public/.well-known/assetlinks.json`, en
++`sha256_cert_fingerprints`.
++
++> Si en algún momento subís a Google Play, Play **re-firma** el APK: hay que
++> agregar además el SHA-256 que aparece en
++> *Play Console → Setup → App integrity → App signing key certificate*.
++> El array acepta varios fingerprints.
++
++### Android: el applicationId sigue siendo `com.example.miatracker`
++
++Es el ID de ejemplo que genera Flutter. Funciona para App Links, pero
++**Google Play rechaza cualquier package que empiece con `com.example.`**.
++
++Cambiarlo ahora rompe la actualización sobre las instalaciones existentes
++(Android lo trata como otra app: hay que desinstalar y reinstalar). Si vas a
++publicar, es mejor cambiarlo **antes** de la primera subida:
++
++- `android/app/build.gradle.kts` → `namespace` y `applicationId`
++- mover `android/app/src/main/kotlin/com/example/miatracker/MainActivity.kt`
++  al paquete nuevo y actualizar su `package`
++- actualizar `package_name` en `assetlinks.json`
++
++Sugerido para que coincida con iOS: `com.techsolutionsgt.miatracker`.
++
++### iOS: bundle ID inconsistente
++
++En `ios/Runner.xcodeproj/project.pbxproj` hay **tres** valores distintos según
++la configuración:
++
++| Línea | `PRODUCT_BUNDLE_IDENTIFIER`        |
++|-------|------------------------------------|
++| 510   | `miatracker`                       |
++| 698   | `com.techsolutionsgt.miatracker`   |
++| 721   | `com.example.miatracker`           |
++
++El `apple-app-site-association` que quedó escrito asume
++`G728P7G244.com.techsolutionsgt.miatracker` (el Team ID `G728P7G244` sí está
++consistente en el proyecto). Hay que **unificar los tres a un solo bundle ID**;
++si no, la configuración de Debug/Profile no va a validar el Universal Link.
++
++---
++
++## Paso 2 — Android: `AndroidManifest.xml`
++
++Dentro de `<activity android:name=".MainActivity">`, junto al intent-filter que
++ya existe para `io.supabase.miatracker`:
++
++```xml
++<!-- App Links: https://www.miatracker.com/app/... abre la app -->
++<intent-filter android:autoVerify="true">
++    <action android:name="android.intent.action.VIEW" />
++    <category android:name="android.intent.category.DEFAULT" />
++    <category android:name="android.intent.category.BROWSABLE" />
++    <data
++        android:scheme="https"
++        android:host="www.miatracker.com"
++        android:pathPrefix="/app" />
++</intent-filter>
++
++<!-- Entrega el enlace al Navigator de Flutter (lo resuelve MiaLinks.parseRoute) -->
++<meta-data
++    android:name="flutter_deeplinking_enabled"
++    android:value="true" />
++```
++
++Verificar la asociación después de desplegar y de instalar el APK:
++
++```bash
++adb shell pm verify-app-links --re-verify com.example.miatracker
++adb shell pm get-app-links com.example.miatracker
++# debe decir: www.miatracker.com: verified
++```
++
++---
++
++## Paso 3 — iOS: entitlement + `Info.plist`
++
++1. En Xcode: target **Runner** → *Signing & Capabilities* → **+ Capability** →
++   **Associated Domains**, y agregar:
++
++   ```
++   applinks:www.miatracker.com
++   ```
++
++   Eso crea `ios/Runner/Runner.entitlements` (hoy no existe).
++
++2. En `ios/Runner/Info.plist`, agregar:
++
++   ```xml
++   <key>FlutterDeepLinkingEnabled</key>
++   <true/>
++   ```
++
++3. El App ID en el Apple Developer Portal necesita el capability
++   **Associated Domains** habilitado, y hay que regenerar el provisioning
++   profile.
++
++---
++
++## ⚠️ Probar el reset de contraseña después de activar esto
++
++`FlutterDeepLinkingEnabled` / `flutter_deeplinking_enabled` cambian **quién**
++recibe los enlaces entrantes: pasan por el `Navigator` en vez de ir directo al
++plugin. La app usa `io.supabase.miatracker://reset-password` para recuperar
++contraseña, y ese flujo lo maneja `supabase_flutter` por su cuenta.
++
++`main.dart` ya atiende ese caso primero en `_handleDeepLinks` (antes de la
++lógica nueva de correos), así que debería seguir funcionando — pero **es el
++único flujo que puede romperse con este cambio**. Probá "olvidé mi contraseña"
++en un dispositivo real antes de publicar.
++
++---
++
++## Cómo queda el flujo, ya configurado
++
++| Dónde se abre el correo | Qué pasa |
++|---|---|
++| Navegador (desktop o móvil sin la app) | Carga `miatracker.com/app/` y navega a la solicitud |
++| Android con la app instalada | Abre la app directo en Restock Requests |
++| iOS con la app instalada | Abre la app directo en Restock Requests |
++
++**Limitación conocida:** si al abrir el enlace no hay sesión iniciada, la app
++manda al login y **se pierde el destino** — después del login cae en el home,
++no en la orden. Guardar la ruta pendiente y consumirla tras el login es un
++cambio en `AuthWrapper` que no se hizo acá.
+diff --git a/lib/main.dart b/lib/main.dart
+index 0eab58d..39212cf 100644
+--- a/lib/main.dart
++++ b/lib/main.dart
+@@ -48,6 +48,9 @@ import 'screens/settings/company_settings_screen.dart';
+ import 'widgets/auth_wrapper.dart';
+ import 'widgets/mia_logo.dart';
+ 
++// Utils
++import 'utils/mia_links.dart';
++
+ void main() async {
+   WidgetsFlutterBinding.ensureInitialized();
+ 
+@@ -70,6 +73,30 @@ void main() async {
+   runApp(const MyApp());
+ }
+ 
++/// Deep link con el que se ABRIÓ la app (botón de un correo -> App Link en
++/// Android / Universal Link en iOS).
++///
++/// En web el destino se puede leer de `Uri.base.fragment`, pero en móvil la
++/// ruta llega por `onGenerateRoute` durante el arranque. El splash termina
++/// ~3 s después y hace `pushReplacement`, que reemplaza la ruta de ARRIBA:
++/// sin guardar el destino, la pantalla del enlace se borraba sola.
++class PendingDeepLink {
++  static ({String route, Map<String, String> params})? _value;
++  static bool _consumed = false;
++
++  static void offer(({String route, Map<String, String> params}) link) {
++    if (_consumed) return; // ya arrancó: es navegación normal, no un deep link
++    _value = link;
++  }
++
++  static ({String route, Map<String, String> params})? consume() {
++    _consumed = true;
++    final link = _value;
++    _value = null;
++    return link;
++  }
++}
++
+ class MyApp extends StatelessWidget {
+   const MyApp({super.key});
+ 
+@@ -137,7 +164,12 @@ class MyApp extends StatelessWidget {
+     );
+   }
+ 
+-  Map<String, WidgetBuilder> _buildRoutes() {
++  /// ¿Existe esa ruta en el mapa? Se usa antes de navegar a un destino que
++  /// viene de fuera (un enlace de correo viejo o con typo no debe reventar
++  /// la app con "Could not find a generator for route").
++  static bool routeExists(String route) => _buildRoutes().containsKey(route);
++
++  static Map<String, WidgetBuilder> _buildRoutes() {
+     return {
+       // Auth Routes
+       '/auth': (context) => const AuthWrapper(),
+@@ -200,6 +232,32 @@ class MyApp extends StatelessWidget {
+       );
+     }
+ 
++    // Enlaces que vienen de los correos.
++    //
++    // Los botones apuntan a
++    //   https://www.miatracker.com/app/#/restock-management?request=12
++    // y esa URL llega aquí de tres formas según el origen:
++    //   - web: '/restock-management?request=12' (hash strategy)
++    //   - Android App Link / iOS Universal Link: con el path completo, /app incluido
++    // MiaLinks.parseRoute normaliza las tres.
++    //
++    // Sin esto, un nombre de ruta con query ('?request=12') no coincide con el
++    // mapa `routes` (que es de coincidencia exacta) y la app se queda en blanco.
++    final parsed = MiaLinks.parseRoute(settings.name);
++    if (parsed != null) {
++      final builder = _buildRoutes()[parsed.route];
++      if (builder != null) {
++        PendingDeepLink.offer(parsed);
++        return MaterialPageRoute(
++          builder: builder,
++          settings: RouteSettings(
++            name: parsed.route,
++            arguments: parsed.params.isEmpty ? null : parsed.params,
++          ),
++        );
++      }
++    }
++
+     return null;
+   }
+ }
+@@ -268,18 +326,7 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
+ 
+       await Future.delayed(const Duration(seconds: 1));
+ 
+-      if (mounted) {
+-        Navigator.pushReplacement(
+-          context,
+-          PageRouteBuilder(
+-            pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
+-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+-              return FadeTransition(opacity: animation, child: child);
+-            },
+-            transitionDuration: const Duration(milliseconds: 500),
+-          ),
+-        );
+-      }
++      if (mounted) _goToNextScreen();
+     } catch (e) {
+       setState(() {
+         _hasError = true;
+@@ -290,19 +337,38 @@ class _SplashScreenState extends State<SplashScreen> with TickerProviderStateMix
+ 
+       await Future.delayed(const Duration(seconds: 1));
+ 
+-      if (mounted) {
+-        Navigator.pushReplacement(
+-          context,
+-          PageRouteBuilder(
+-            pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
+-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+-              return FadeTransition(opacity: animation, child: child);
+-            },
+-            transitionDuration: const Duration(milliseconds: 500),
+-          ),
+-        );
++      if (mounted) _goToNextScreen();
++    }
++  }
++
++  /// Sale del splash.
++  ///
++  /// Si la app se abrió desde el botón de un correo, `onGenerateRoute` ya
++  /// empujó esa pantalla durante el arranque y está ARRIBA del splash. En ese
++  /// caso no hay que navegar: basta con no reemplazar la ruta de arriba, que es
++  /// justo lo que hacía `pushReplacement` (borraba la pantalla del enlace a los
++  /// ~3 s). Si no hay sesión sí se reemplaza, para mandar al login.
++  void _goToNextScreen() {
++    final pending = PendingDeepLink.consume();
++    final hasSession = Supabase.instance.client.auth.currentSession != null;
++
++    if (pending != null && hasSession && MyApp.routeExists(pending.route)) {
++      if (kDebugMode) {
++        print('🔗 Deep link de arranque: ${pending.route} ${pending.params}');
+       }
++      return; // la pantalla del enlace ya está en pantalla
+     }
++
++    Navigator.pushReplacement(
++      context,
++      PageRouteBuilder(
++        pageBuilder: (context, animation, secondaryAnimation) => const AuthWrapper(),
++        transitionsBuilder: (context, animation, secondaryAnimation, child) {
++          return FadeTransition(opacity: animation, child: child);
++        },
++        transitionDuration: const Duration(milliseconds: 500),
++      ),
++    );
+   }
+ 
+   Future<void> _checkForDeepLinks() async {
+diff --git a/lib/screens/inventory_screen.dart b/lib/screens/inventory_screen.dart
+index a144cf8..4c38208 100644
+--- a/lib/screens/inventory_screen.dart
++++ b/lib/screens/inventory_screen.dart
+@@ -17,6 +17,7 @@ import 'package:mobile_scanner/mobile_scanner.dart';
+ import 'package:qr_flutter/qr_flutter.dart';
+ 
+ import '../services/cart_service.dart';
++import '../services/email_service.dart';
+ import '../services/image_service.dart';
+ import '../services/inventory_service.dart';
+ import '../services/profile_service.dart';
+@@ -2178,6 +2179,11 @@ class _RestockDialogState extends State<_RestockDialog> {
+   String _selectedPriority = 'normal';
+   bool _isLoading = false;
+ 
++  /// Item Number = código de barras del producto. Es la MISMA referencia que
++  /// se manda en el correo, para poder cruzar la solicitud sin ambigüedad.
++  String? get _itemNumber =>
++      EmailService.extractItemNumber(widget.item['codigo_barras']);
++
+   @override
+   void initState() {
+     super.initState();
+@@ -2259,6 +2265,26 @@ class _RestockDialogState extends State<_RestockDialog> {
+                               maxLines: 2,
+                               overflow: TextOverflow.ellipsis,
+                             ),
++                            if (_itemNumber != null) ...[
++                              const SizedBox(height: 6),
++                              Container(
++                                padding: const EdgeInsets.symmetric(
++                                    horizontal: 8, vertical: 3),
++                                decoration: BoxDecoration(
++                                  color: Colors.white.withOpacity(0.25),
++                                  borderRadius: BorderRadius.circular(6),
++                                ),
++                                child: Text(
++                                  'Item # $_itemNumber',
++                                  style: const TextStyle(
++                                    color: Colors.white,
++                                    fontSize: 12,
++                                    fontWeight: FontWeight.bold,
++                                    letterSpacing: 0.5,
++                                  ),
++                                ),
++                              ),
++                            ],
+                           ],
+                         ),
+                       ),
+diff --git a/lib/screens/restock_management_screen.dart b/lib/screens/restock_management_screen.dart
+index 5532aea..381a65e 100644
+--- a/lib/screens/restock_management_screen.dart
++++ b/lib/screens/restock_management_screen.dart
+@@ -2,6 +2,7 @@
+ 
+ import 'package:flutter/material.dart';
+ import 'package:intl/intl.dart';
++import '../services/email_service.dart';
+ import '../services/restock_service.dart';
+ import '../services/profile_service.dart';
+ import '../services/inventory_service.dart';
+@@ -31,6 +32,10 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+   String? _filterStatus;
+   String? _filterPriority;
+ 
++  /// Solicitud pedida por un deep link de correo (?request=12).
++  int? _focusRequestId;
++  bool _focusHandled = false;
++
+   @override
+   void initState() {
+     super.initState();
+@@ -38,6 +43,65 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+     _checkAdminAndLoad();
+   }
+ 
++  @override
++  void didChangeDependencies() {
++    super.didChangeDependencies();
++
++    // Argumentos del enlace del correo:
++    // https://www.miatracker.com/app/#/restock-management?request=12
++    final args = ModalRoute.of(context)?.settings.arguments;
++    if (args is Map && args['request'] != null) {
++      final parsed = int.tryParse(args['request'].toString());
++      if (parsed != null && parsed != _focusRequestId) {
++        _focusRequestId = parsed;
++        _focusHandled = false;
++        _maybeOpenFocusedRequest();
++      }
++    }
++  }
++
++  /// Abre el detalle de la solicitud que venía en el enlace, UNA sola vez y
++  /// solo cuando la lista ya está cargada.
++  ///
++  /// No se consulta `_isLoading` a propósito: en el primer arranque sigue en
++  /// `true` mientras corre `_loadData` (se apaga después, en el `finally` de
++  /// `_checkAdminAndLoad`), así que ese guardia dejaría el enfoque muerto justo
++  /// en el caso que importa. `_allRequests` vacío ya cubre "todavía no cargó".
++  void _maybeOpenFocusedRequest() {
++    if (_focusHandled || _focusRequestId == null) return;
++
++    // Todavía no cargó nada: reintentar en la próxima carga.
++    if (_allRequests.isEmpty) return;
++
++    final match =
++        _allRequests.where((r) => r['id'] == _focusRequestId).toList();
++
++    if (match.isEmpty) {
++      // La lista ya cargó y la solicitud no está (otra compañía, borrada, o el
++      // filtro activo la excluye). Se marca como atendida para que no salte
++      // sola en un refresh posterior, y se avisa en vez de no hacer nada.
++      _focusHandled = true;
++      final missingId = _focusRequestId;
++      WidgetsBinding.instance.addPostFrameCallback((_) {
++        if (mounted) {
++          _showErrorSnackBar('Request #$missingId is not available here');
++        }
++      });
++      return;
++    }
++
++    _focusHandled = true;
++    final request = match.first;
++
++    // Posicionar la pestaña según el estado de la solicitud.
++    const tabByStatus = {'pending': 0, 'approved': 1, 'completed': 2};
++    _tabController.animateTo(tabByStatus[request['status']] ?? 3);
++
++    WidgetsBinding.instance.addPostFrameCallback((_) {
++      if (mounted) _showRequestDetails(request);
++    });
++  }
++
+   @override
+   void dispose() {
+     _tabController.dispose();
+@@ -70,6 +134,7 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+           _allRequests = requests;
+           _stats = stats;
+         });
++        _maybeOpenFocusedRequest();
+       }
+     } catch (e) {
+       if (mounted) {
+@@ -285,6 +350,7 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+             'Unknown Product')
+         .toString();
+     final imagenProducto = request['imagen'] ?? inventario?['imagen'];
++    final itemNumber = _itemNumber(request);
+     final stockActual = request['stock_actual'] ?? 0;
+     final cantidadSolicitada = request['cantidad_solicitada'] ?? 0;
+ 
+@@ -396,6 +462,26 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+                           maxLines: 2,
+                           overflow: TextOverflow.ellipsis,
+                         ),
++                        if (itemNumber != null) ...[
++                          const SizedBox(height: 4),
++                          Container(
++                            padding: const EdgeInsets.symmetric(
++                                horizontal: 8, vertical: 2),
++                            decoration: BoxDecoration(
++                              color: const Color(0xFF2B5F8C).withOpacity(0.1),
++                              borderRadius: BorderRadius.circular(6),
++                            ),
++                            child: Text(
++                              'Item # $itemNumber',
++                              style: const TextStyle(
++                                fontSize: 11,
++                                fontWeight: FontWeight.bold,
++                                color: Color(0xFF2B5F8C),
++                                letterSpacing: 0.3,
++                              ),
++                            ),
++                          ),
++                        ],
+                         const SizedBox(height: 4),
+                         Text(
+                           'Requested by: $nombreUsuario',
+@@ -607,6 +693,8 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+                           inventario?['nombre_producto'] ??
+                           'N/A')
+                       .toString()),
++              _buildDetailRow('Item Number', _itemNumber(request) ?? 'N/A'),
++              _buildDetailRow('Request ID', '#${request['id']}'),
+               _buildDetailRow(
+                   'Requested by', (request['requester_name'] ?? 'N/A').toString()),
+               if (supplier != null) ...[
+@@ -690,6 +778,7 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+             inventario?['nombre_producto'] ??
+             'Unknown Product')
+         .toString();
++    final itemNumber = _itemNumber(request);
+ 
+     showDialog(
+       context: context,
+@@ -711,6 +800,17 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+                   'Confirm restock approval for "$nombreProducto"?',
+                   style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+                 ),
++                if (itemNumber != null) ...[
++                  const SizedBox(height: 6),
++                  Text(
++                    'Item # $itemNumber',
++                    style: const TextStyle(
++                      fontSize: 12,
++                      fontWeight: FontWeight.bold,
++                      color: Color(0xFF2B5F8C),
++                    ),
++                  ),
++                ],
+ 
+                 const SizedBox(height: 20),
+ 
+@@ -1169,6 +1269,21 @@ class _RestockManagementScreenState extends State<RestockManagementScreen>
+   /// vive en `nombre_producto` dentro de la propia fila de `restock_requests`.
+   /// El acceso a `request['inventario']` solo se mantiene como último recurso
+   /// para las pantallas que sí traen el JOIN.
++  /// Item Number = código de barras del producto. Es la MISMA referencia que
++  /// va en los correos, para poder cruzar pantalla y correo sin ambigüedad.
++  /// `RestockService._enrichRequests` ya lo deja resuelto en 'item_number'.
++  String? _itemNumber(Map<String, dynamic> request) {
++    final precomputed = request['item_number'];
++    if (precomputed is String && precomputed.trim().isNotEmpty) {
++      return precomputed.trim();
++    }
++
++    final inventario = request['inventario'] as Map<String, dynamic>?;
++    return EmailService.extractItemNumber(
++      inventario?['codigo_barras'] ?? request['codigo_barras'],
++    );
++  }
++
+   String _productName(Map<String, dynamic> request) {
+     final direct = request['nombre_producto'];
+     if (direct is String && direct.trim().isNotEmpty) return direct.trim();
+diff --git a/lib/services/email_service.dart b/lib/services/email_service.dart
+index 8dab057..9cc7ecb 100644
+--- a/lib/services/email_service.dart
++++ b/lib/services/email_service.dart
+@@ -1,9 +1,12 @@
+ // lib/services/email_service.dart
+ 
++import 'dart:convert';
++
+ import 'package:flutter/foundation.dart';
+ import 'package:intl/intl.dart';
+ import 'package:supabase_flutter/supabase_flutter.dart';
+ import 'auth_service.dart';
++import '../utils/mia_links.dart';
+ 
+ class EmailService {
+   static const String _fromEmail = 'mark@miatracker.com';
+@@ -36,6 +39,143 @@ class EmailService {
+   /// Log que SÍ aparece en release builds (no solo en debug).
+   static void _log(String msg) => debugPrint('[EmailService] $msg');
+ 
++  // ========================================================================
++  // 🏷️ ITEM NUMBER (CÓDIGO DE BARRAS) Y BOTÓN A LA APP
++  // ========================================================================
++
++  /// Item Number = el código de barras del producto (`inventario.codigo_barras`).
++  ///
++  /// Es la referencia que permite saber de QUÉ producto se habla sin depender
++  /// del nombre. Se lee del inventario para que el correo lleve el código
++  /// vigente aunque la solicitud sea vieja. Nunca lanza: si no se puede
++  /// resolver devuelve `null` y el correo omite la fila.
++  static Future<String?> resolveItemNumber(int? productId) async {
++    if (productId == null || productId == 0) return null;
++    try {
++      final row = await _supabase
++          .from('inventario')
++          .select('codigo_barras')
++          .eq('id_inventario', productId)
++          .maybeSingle();
++
++      return extractItemNumber(row?['codigo_barras']);
++    } catch (e) {
++      _log('⚠️ No se pudo resolver el item number de $productId: $e');
++      return null;
++    }
++  }
++
++  /// Item Number a partir del id de la SOLICITUD (cuando no se tiene el
++  /// producto a mano). Nunca lanza.
++  static Future<String?> resolveItemNumberByRequest(int requestId) async {
++    try {
++      final row = await _supabase
++          .from('restock_requests')
++          .select('id_inventario')
++          .eq('id', requestId)
++          .maybeSingle();
++
++      return resolveItemNumber(row?['id_inventario'] as int?);
++    } catch (e) {
++      _log('⚠️ No se pudo resolver el item number de la solicitud $requestId: $e');
++      return null;
++    }
++  }
++
++  /// Saca el código legible de un `codigo_barras` JSONB.
++  /// Formato real en la base: {"barcode_data": "650454"} (a veces con qr_data).
++  static String? extractItemNumber(dynamic codigoBarras) {
++    try {
++      if (codigoBarras == null) return null;
++
++      if (codigoBarras is String) {
++        final trimmed = codigoBarras.trim();
++        if (trimmed.isEmpty) return null;
++
++        // La columna es JSONB, pero si alguna fila quedó guardada como TEXTO
++        // JSON ('{"barcode_data":"650454"}') hay que decodificarla: si no, el
++        // correo mostraría el blob entero como Item Number.
++        if (trimmed.startsWith('{')) {
++          try {
++            return extractItemNumber(jsonDecode(trimmed));
++          } catch (_) {
++            return trimmed;
++          }
++        }
++
++        return trimmed;
++      }
++
++      if (codigoBarras is Map) {
++        for (final key in const ['barcode_data', 'upc', 'ean', 'qr_data']) {
++          final value = codigoBarras[key];
++          if (value != null && value.toString().trim().isNotEmpty) {
++            return value.toString().trim();
++          }
++        }
++      }
++
++      return null;
++    } catch (_) {
++      return null;
++    }
++  }
++
++  /// Sufijo ` (Item #650454)` para los asuntos. Vacío si no hay código.
++  static String _itemSuffix(String? itemNumber) =>
++      (itemNumber == null || itemNumber.isEmpty) ? '' : ' (Item #$itemNumber)';
++
++  /// Asunto del correo que recibe el proveedor.
++  /// Antes decía "Restock Request Approved": para el proveedor no es una
++  /// aprobación, es una ORDEN que se le está pidiendo.
++  static String _orderRequestSubject(String? productName, String? itemNumber) {
++    final product =
++        (productName == null || productName.isEmpty) ? 'Product' : productName;
++    return '📦 Order Request - $product${_itemSuffix(itemNumber)}';
++  }
++
++  /// Fila "Item Number" para las tablas de detalle de los correos.
++  /// Devuelve '' cuando no hay código, para no dejar filas vacías.
++  static String _itemNumberRow(
++    String? itemNumber, {
++    required String labelColor,
++    required String valueColor,
++  }) {
++    if (itemNumber == null || itemNumber.isEmpty) return '';
++    return '''
++                                            <tr>
++                                                <td style="padding: 8px 0; color: $labelColor; font-size: 14px;">Item Number:</td>
++                                                <td style="padding: 8px 0; color: $valueColor; font-size: 14px; font-weight: 700; font-family: 'SF Mono', Menlo, Consolas, monospace; letter-spacing: 0.5px;">$itemNumber</td>
++                                            </tr>
++''';
++  }
++
++  /// Botón que abre la orden en MIA Tracker.
++  ///
++  /// Enlace https normal: en el navegador abre el Flutter web y, cuando el
++  /// dominio quede verificado como App Link / Universal Link, abre la app
++  /// instalada en Android o iOS con esa misma URL.
++  static String _openInAppButton(
++    String url, {
++    String label = 'View Order in MIA Tracker',
++    String color = '#2B5F8C',
++  }) {
++    return '''
++                            <table role="presentation" style="width: 100%; margin-top: 30px;">
++                                <tr>
++                                    <td align="center">
++                                        <a href="$url" target="_blank" style="display: inline-block; padding: 14px 32px; background-color: $color; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
++                                            $label
++                                        </a>
++                                        <p style="margin: 12px 0 0 0; color: #9ca3af; font-size: 12px;">
++                                            Opens the MIA Tracker app if installed, otherwise your browser.
++                                        </p>
++                                    </td>
++                                </tr>
++                            </table>
++''';
++  }
++
+   // ========================================================================
+   // 🔑 RESOLVER EMAILS DE ADMINS  (con cascada de fallbacks)
+   //
+@@ -358,6 +498,7 @@ class EmailService {
+     required String priority,
+     int? supplierId,
+     String? notes,
++    int? productId,
+   }) async {
+     final sent = <String, bool>{
+       'requester': false,
+@@ -370,6 +511,11 @@ class EmailService {
+     final companyName = await resolveCompanyName(companyId);
+     final requesterName = await resolveUserName(requesterUserId);
+ 
++    // Item Number = código de barras del producto. Va en los tres correos.
++    final itemNumber = productId != null
++        ? await resolveItemNumber(productId)
++        : await resolveItemNumberByRequest(requestId);
++
+     // ---------- 1) JEFE / ADMINS -------------------------------------------
+     try {
+       // sendRestockRequestToAdmins no devuelve resultado: reporta por lastError.
+@@ -377,13 +523,14 @@ class EmailService {
+       lastError = null;
+       await sendRestockRequestToAdmins(
+         requestId: requestId,
+-        productId: 0, // no se usa dentro del template
++        productId: productId ?? 0,
+         productName: productName,
+         requestedQuantity: requestedQuantity,
+         currentStock: currentStock,
+         priority: priority,
+         companyId: companyId,
+         notes: notes,
++        itemNumber: itemNumber,
+       );
+       sent['admins'] = lastError == null;
+     } catch (e) {
+@@ -396,7 +543,7 @@ class EmailService {
+       if (requesterEmail != null) {
+         final res = await sendViaEdgeFunction(
+           toEmail: requesterEmail,
+-          subject: '📤 Restock Request Sent - $productName',
++          subject: '📤 Restock Request Sent - $productName${_itemSuffix(itemNumber)}',
+           html: _buildStatusUpdateTemplate(
+             title: '📤 Restock Request Sent',
+             headerFrom: '#3B82F6',
+@@ -404,8 +551,10 @@ class EmailService {
+             greeting: 'Hello $requesterName,',
+             intro:
+             'Your restock request has been submitted and is now waiting for approval.',
++            ctaUrl: MiaLinks.restockRequest(requestId),
+             rows: {
+               'Product': productName,
++              if (itemNumber != null) 'Item Number': itemNumber,
+               'Requested Quantity': '$requestedQuantity units',
+               'Current Stock': '$currentStock units',
+               'Priority': priority.toUpperCase(),
+@@ -437,6 +586,7 @@ class EmailService {
+           quantity: requestedQuantity,
+           companyId: companyId,
+           notes: notes,
++          itemNumber: itemNumber,
+         );
+         sent['supplier'] = true;
+       } catch (e) {
+@@ -484,6 +634,7 @@ class EmailService {
+     final currentStock = (request['stock_actual'] as int?) ?? 0;
+     final companyName = await resolveCompanyName(companyId);
+     final requesterName = await resolveUserName(request['user_id']?.toString());
++    final itemNumber = await resolveItemNumber(request['id_inventario'] as int?);
+ 
+     // ---------- 1) PROVEEDOR (con QR) --------------------------------------
+     try {
+@@ -492,7 +643,9 @@ class EmailService {
+         supplierId: supplierId,
+         deliveryDate: deliveryDate,
+         internalNotes: internalNotes,
+-        qrData: 'miatracker://restock/complete/$requestId',
++        // ⚠️ Formato fijo: qr_complete_order_screen.dart valida este prefijo.
++        qrData: MiaLinks.orderQrData(requestId),
++        itemNumber: itemNumber,
+       );
+       sent['supplier'] = true;
+     } catch (e) {
+@@ -512,6 +665,7 @@ class EmailService {
+ 
+     final rows = <String, String>{
+       'Product': productName,
++      if (itemNumber != null) 'Item Number': itemNumber,
+       'Approved Quantity': '$quantity units',
+       'Current Stock': '$currentStock units',
+       'Stock After Delivery': '${currentStock + quantity} units',
+@@ -538,6 +692,7 @@ class EmailService {
+           'on delivery will complete the order and update the inventory automatically.',
+       noteColor: '#10B981',
+       companyName: companyName,
++      ctaUrl: MiaLinks.restockRequest(requestId),
+     );
+ 
+     // ---------- 2) SOLICITANTE ---------------------------------------------
+@@ -546,7 +701,8 @@ class EmailService {
+       if (requesterEmail != null) {
+         final res = await sendViaEdgeFunction(
+           toEmail: requesterEmail,
+-          subject: '✅ Your Restock Request Was Approved - $productName',
++          subject:
++              '✅ Your Restock Request Was Approved - $productName${_itemSuffix(itemNumber)}',
+           html: html,
+         );
+         sent['requester'] = res['success'] == true;
+@@ -561,7 +717,8 @@ class EmailService {
+       if (adminEmails.isNotEmpty) {
+         final res = await sendViaEdgeFunction(
+           toEmail: adminEmails.join(';'),
+-          subject: '✅ Restock Request Approved - $productName',
++          subject:
++              '✅ Restock Request Approved - $productName${_itemSuffix(itemNumber)}',
+           html: html,
+         );
+         sent['admins'] = res['success'] == true;
+@@ -606,6 +763,7 @@ class EmailService {
+     final quantity = (request['cantidad_solicitada'] as int?) ?? 0;
+     final companyName = await resolveCompanyName(companyId);
+     final requesterName = await resolveUserName(request['user_id']?.toString());
++    final itemNumber = await resolveItemNumber(request['id_inventario'] as int?);
+ 
+     final html = _buildStatusUpdateTemplate(
+       title: '❌ Restock Request Declined',
+@@ -616,6 +774,7 @@ class EmailService {
+       'The restock request created by $requesterName has been declined.',
+       rows: {
+         'Product': productName,
++        if (itemNumber != null) 'Item Number': itemNumber,
+         'Requested Quantity': '$quantity units',
+         'Status': 'Declined',
+         'Request ID': '#$requestId',
+@@ -624,6 +783,7 @@ class EmailService {
+       noteBody: reason,
+       noteColor: '#EF4444',
+       companyName: companyName,
++      ctaUrl: MiaLinks.restockRequest(requestId),
+     );
+ 
+     // ---------- 1) SOLICITANTE ---------------------------------------------
+@@ -632,7 +792,8 @@ class EmailService {
+       if (requesterEmail != null) {
+         final res = await sendViaEdgeFunction(
+           toEmail: requesterEmail,
+-          subject: '❌ Your Restock Request Was Declined - $productName',
++          subject:
++              '❌ Your Restock Request Was Declined - $productName${_itemSuffix(itemNumber)}',
+           html: html,
+         );
+         sent['requester'] = res['success'] == true;
+@@ -647,7 +808,8 @@ class EmailService {
+       if (adminEmails.isNotEmpty) {
+         final res = await sendViaEdgeFunction(
+           toEmail: adminEmails.join(';'),
+-          subject: '❌ Restock Request Declined - $productName',
++          subject:
++              '❌ Restock Request Declined - $productName${_itemSuffix(itemNumber)}',
+           html: html,
+         );
+         sent['admins'] = res['success'] == true;
+@@ -675,6 +837,7 @@ class EmailService {
+             quantity: quantity,
+             companyName: companyName,
+             rejectionReason: reason,
++            itemNumber: itemNumber,
+           );
+           sent['supplier'] = res['success'] == true;
+         } else {
+@@ -706,6 +869,7 @@ class EmailService {
+     String? noteTitle,
+     String? noteBody,
+     String? noteColor,
++    String? ctaUrl,
+   }) {
+     final rowsHtml = rows.entries.map((e) => '''
+       <tr>
+@@ -762,15 +926,7 @@ class EmailService {
+ 
+                             $noteHtml
+ 
+-                            <table role="presentation" style="width: 100%; margin-top: 30px;">
+-                                <tr>
+-                                    <td align="center">
+-                                        <a href="https://www.miatracker.com/app/#/restock-requests" style="display: inline-block; padding: 14px 32px; background-color: $headerFrom; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+-                                            Open in MIA Tracker
+-                                        </a>
+-                                    </td>
+-                                </tr>
+-                            </table>
++${_openInAppButton(ctaUrl ?? MiaLinks.appHome, label: 'Open in MIA Tracker', color: headerFrom)}
+ 
+                             <p style="margin: 30px 0 0 0; color: #374151; font-size: 14px;">
+                                 Best regards,<br><strong>$companyName</strong>
+@@ -850,6 +1006,8 @@ class EmailService {
+         if (kDebugMode) print('⚠️ Usando nombre por defecto');
+       }
+ 
++      final itemNumber = await resolveItemNumber(request['id_inventario'] as int?);
++
+       final htmlBody = _buildApprovalEmailTemplate(
+         supplierName: supplier['name'],
+         productName: request['nombre_producto'] ?? 'Producto',
+@@ -857,11 +1015,16 @@ class EmailService {
+         companyName: companyName,
+         internalNotes: request['internal_notes'],
+         estimatedDeliveryDate: request['estimated_delivery_date'],
++        itemNumber: itemNumber,
++        requestId: requestId,
+       );
+ 
+       final result = await sendViaEdgeFunction(
+         toEmail: supplier['email'],
+-        subject: '✅ Restock Request Approved - ${request['nombre_producto']}',
++        subject: _orderRequestSubject(
++          request['nombre_producto']?.toString(),
++          itemNumber,
++        ),
+         html: htmlBody,
+       );
+ 
+@@ -894,8 +1057,13 @@ class EmailService {
+     required String companyName,
+     String? internalNotes,
+     String? estimatedDeliveryDate,
++    String? itemNumber,
++    int? productId,
++    int? requestId,
+   }) async {
+     try {
++      final resolvedItemNumber = itemNumber ?? await resolveItemNumber(productId);
++
+       final htmlBody = _buildApprovalEmailTemplate(
+         supplierName: supplierName,
+         productName: productName,
+@@ -903,11 +1071,13 @@ class EmailService {
+         companyName: companyName,
+         internalNotes: internalNotes,
+         estimatedDeliveryDate: estimatedDeliveryDate,
++        itemNumber: resolvedItemNumber,
++        requestId: requestId,
+       );
+ 
+       return await sendViaEdgeFunction(
+         toEmail: toEmail,
+-        subject: '✅ Restock Request Approved - $productName',
++        subject: _orderRequestSubject(productName, resolvedItemNumber),
+         html: htmlBody,
+       );
+     } catch (e) {
+@@ -927,19 +1097,25 @@ class EmailService {
+     required int quantity,
+     required String companyName,
+     required String rejectionReason,
++    String? itemNumber,
++    int? productId,
+   }) async {
+     try {
++      final resolvedItemNumber = itemNumber ?? await resolveItemNumber(productId);
++
+       final htmlBody = _buildRejectionEmailTemplate(
+         supplierName: supplierName,
+         productName: productName,
+         quantity: quantity,
+         companyName: companyName,
+         rejectionReason: rejectionReason,
++        itemNumber: resolvedItemNumber,
+       );
+ 
+       return await sendViaEdgeFunction(
+         toEmail: toEmail,
+-        subject: '❌ Restock Request Rejected - $productName',
++        subject:
++            '❌ Restock Request Rejected - $productName${_itemSuffix(resolvedItemNumber)}',
+         html: htmlBody,
+       );
+     } catch (e) {
+@@ -959,6 +1135,8 @@ class EmailService {
+     required int quantity,
+     required String companyName,
+     required String rejectionReason,
++    String? itemNumber,
++    int? productId,
+   }) async {
+     return await sendRejectionEmail(
+       toEmail: toEmail,
+@@ -967,6 +1145,8 @@ class EmailService {
+       quantity: quantity,
+       companyName: companyName,
+       rejectionReason: rejectionReason,
++      itemNumber: itemNumber,
++      productId: productId,
+     );
+   }
+ 
+@@ -981,6 +1161,8 @@ class EmailService {
+     required int quantity,
+     required int companyId,
+     String? notes,
++    int? productId,
++    String? itemNumber,
+   }) async {
+     try {
+       if (kDebugMode) {
+@@ -1011,6 +1193,10 @@ class EmailService {
+         if (kDebugMode) print('⚠️ Usando nombre default');
+       }
+ 
++      final resolvedItemNumber = itemNumber ??
++          await resolveItemNumber(productId) ??
++          await resolveItemNumberByRequest(requestId);
++
+       final htmlBody = _buildNewRestockRequestTemplate(
+         supplierName: supplier['name'],
+         productName: productName,
+@@ -1018,11 +1204,12 @@ class EmailService {
+         companyName: companyName,
+         notes: notes,
+         requestId: requestId,
++        itemNumber: resolvedItemNumber,
+       );
+ 
+       final result = await sendViaEdgeFunction(
+         toEmail: supplier['email'],
+-        subject: '🔔 New Restock Request - $productName',
++        subject: _orderRequestSubject(productName, resolvedItemNumber),
+         html: htmlBody,
+       );
+ 
+@@ -1047,6 +1234,7 @@ class EmailService {
+     DateTime? deliveryDate,
+     String? internalNotes,
+     required String qrData,
++    String? itemNumber,
+   }) async {
+     try {
+       if (kDebugMode) {
+@@ -1089,10 +1277,14 @@ class EmailService {
+       }
+ 
+       // 4. 🔥 GENERAR URL DEL QR
+-      final qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=$qrData';
++      final qrImageUrl = MiaLinks.qrImageUrl(qrData);
+ 
+       if (kDebugMode) print('✅ QR Image URL: $qrImageUrl');
+ 
++      // 4b. Item Number (código de barras del producto)
++      final resolvedItemNumber =
++          itemNumber ?? await resolveItemNumber(request['id_inventario'] as int?);
++
+       // 5. Construir HTML con QR
+       final htmlBody = _buildApprovalWithQRTemplate(
+         supplierName: supplier['name'],
+@@ -1103,12 +1295,16 @@ class EmailService {
+         internalNotes: internalNotes,
+         qrImageUrl: qrImageUrl,
+         requestId: requestId,
++        itemNumber: resolvedItemNumber,
+       );
+ 
+       // 6. Enviar email
+       final result = await sendViaEdgeFunction(
+         toEmail: supplier['email'],
+-        subject: '✅ Restock Request Approved - ${request['nombre_producto']}',
++        subject: _orderRequestSubject(
++          request['nombre_producto']?.toString(),
++          resolvedItemNumber,
++        ),
+         html: htmlBody,
+       );
+ 
+@@ -1141,6 +1337,7 @@ class EmailService {
+     required String priority,
+     required int companyId,
+     String? notes,
++    String? itemNumber,
+   }) async {
+     try {
+       if (kDebugMode) {
+@@ -1190,8 +1387,14 @@ class EmailService {
+       final String recipientsString = adminEmails.join(';');
+ 
+       // 🔥 GENERAR QR DATA
+-      final qrData = 'miatracker://restock/complete/$requestId';
+-      final qrImageUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=300x300&data=$qrData';
++      // ⚠️ Formato fijo: qr_complete_order_screen.dart valida este prefijo.
++      final qrData = MiaLinks.orderQrData(requestId);
++      final qrImageUrl = MiaLinks.qrImageUrl(qrData);
++
++      // Item Number = código de barras del producto.
++      final resolvedItemNumber = itemNumber ??
++          await resolveItemNumber(productId) ??
++          await resolveItemNumberByRequest(requestId);
+ 
+       if (kDebugMode) {
+         print('═══════════════════════════════════════════════');
+@@ -1214,6 +1417,7 @@ class EmailService {
+         notes: notes,
+         requestId: requestId,
+         qrImageUrl: qrImageUrl, // 🔥 NUEVO PARÁMETRO
++        itemNumber: resolvedItemNumber,
+       );
+ 
+       if (kDebugMode) {
+@@ -1223,7 +1427,8 @@ class EmailService {
+ 
+       final result = await sendViaEdgeFunction(
+         toEmail: recipientsString,
+-        subject: '🔔 New Restock Request - $productName',
++        subject:
++            '🔔 New Restock Request - $productName${_itemSuffix(resolvedItemNumber)}',
+         html: htmlBody,
+       );
+ 
+@@ -1275,7 +1480,14 @@ class EmailService {
+     String? notes,
+     required int requestId,
+     required String qrImageUrl, // 🔥 NUEVO PARÁMETRO
++    String? itemNumber,
+   }) {
++    final itemNumberRow = _itemNumberRow(
++      itemNumber,
++      labelColor: '#6b7280',
++      valueColor: '#111827',
++    );
++
+     final Map<String, Map<String, String>> priorityColors = {
+       'low': {'bg': '#f0fdf4', 'border': '#86efac', 'text': '#065f46'},
+       'medium': {'bg': '#eff6ff', 'border': '#93c5fd', 'text': '#1e40af'},
+@@ -1353,6 +1565,7 @@ class EmailService {
+                                                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 45%;">Product:</td>
+                                                 <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">$productName</td>
+                                             </tr>
++$itemNumberRow
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Requested Quantity:</td>
+                                                 <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">$requestedQuantity units</td>
+@@ -1403,15 +1616,7 @@ class EmailService {
+                             </table>
+ 
+                             <!-- CTA Button -->
+-                            <table role="presentation" style="width: 100%; margin-top: 30px;">
+-                                <tr>
+-                                    <td align="center">
+-                                        <a href="https://www.miatracker.com/app/#/restock-requests" style="display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+-                                            Review Request in Dashboard
+-                                        </a>
+-                                    </td>
+-                                </tr>
+-                            </table>
++${_openInAppButton(MiaLinks.restockRequest(requestId), label: 'Review Request in MIA Tracker', color: '#2563eb')}
+ 
+                             <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                                 If you have any questions about this request, please contact $requesterName directly.
+@@ -1479,6 +1684,9 @@ class EmailService {
+       // 4. Obtener compañía
+       final companyName = await resolveCompanyName(companyId);
+ 
++      // 4b. Item Number (código de barras del producto)
++      final itemNumber = await resolveItemNumber(request['id_inventario'] as int?);
++
+       // 5. Construir HTML
+       final htmlBody = _buildOrderCompletedTemplate(
+         productName: request['nombre_producto'],
+@@ -1486,6 +1694,7 @@ class EmailService {
+         companyName: companyName,
+         completedDate: request['fecha_completado'] ?? DateTime.now().toIso8601String(),
+         requestId: requestId,
++        itemNumber: itemNumber,
+       );
+ 
+       // 6. 🔥 ENVIAR A PROVEEDOR
+@@ -1496,7 +1705,8 @@ class EmailService {
+ 
+         await sendViaEdgeFunction(
+           toEmail: supplier['email'],
+-          subject: '✅ Order Completed - ${request['nombre_producto']}',
++          subject:
++              '✅ Order Completed - ${request['nombre_producto']}${_itemSuffix(itemNumber)}',
+           html: htmlBody,
+         );
+ 
+@@ -1512,7 +1722,8 @@ class EmailService {
+ 
+         await sendViaEdgeFunction(
+           toEmail: adminEmails.join(';'),
+-          subject: '✅ Restock Completed - ${request['nombre_producto']}',
++          subject:
++              '✅ Restock Completed - ${request['nombre_producto']}${_itemSuffix(itemNumber)}',
+           html: htmlBody,
+         );
+ 
+@@ -1524,7 +1735,8 @@ class EmailService {
+       if (requesterEmail != null) {
+         await sendViaEdgeFunction(
+           toEmail: requesterEmail,
+-          subject: '✅ Your Restock Order Was Completed - ${request['nombre_producto']}',
++          subject:
++              '✅ Your Restock Order Was Completed - ${request['nombre_producto']}${_itemSuffix(itemNumber)}',
+           html: htmlBody,
+         );
+         _log('✅ Email de completado enviado al solicitante');
+@@ -1560,7 +1772,15 @@ class EmailService {
+     required String companyName,
+     String? internalNotes,
+     String? estimatedDeliveryDate,
++    String? itemNumber,
++    int? requestId,
+   }) {
++    final itemNumberRow = _itemNumberRow(
++      itemNumber,
++      labelColor: '#047857',
++      valueColor: '#064e3b',
++    );
++
+     final deliverySection = estimatedDeliveryDate != null
+         ? '''
+         <tr>
+@@ -1591,7 +1811,7 @@ class EmailService {
+ <head>
+     <meta charset="UTF-8">
+     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+-    <title>Application Approved</title>
++    <title>Order Request</title>
+ </head>
+ <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; background-color: #f3f4f6;">
+     <table role="presentation" style="width: 100%; border-collapse: collapse;">
+@@ -1600,7 +1820,7 @@ class EmailService {
+                 <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                     <tr>
+                         <td style="background: linear-gradient(135deg, #6B8E3D 0%, #5a7632 100%); padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
+-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">✅ Application Approved</h1>
++                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">📦 Order Request</h1>
+                             <p style="margin: 10px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">MIA Tracker - Maintenance Inventory Asset Tracker</p>
+                         </td>
+                     </tr>
+@@ -1608,17 +1828,18 @@ class EmailService {
+                         <td style="padding: 40px;">
+                             <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px; line-height: 1.6;">Dear <strong>$supplierName</strong>,</p>
+                             <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
+-                                We are pleased to inform you that your restock request has been <strong style="color: #6B8E3D;">approved</strong> by <strong>$companyName</strong>.
++                                <strong>$companyName</strong> is placing the following <strong style="color: #6B8E3D;">order request</strong> with you. Please confirm availability and delivery.
+                             </p>
+                             <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #f0fdf4; border-radius: 8px; overflow: hidden; border: 1px solid #86efac;">
+                                 <tr>
+                                     <td style="padding: 20px;">
+-                                        <h3 style="margin: 0 0 15px 0; color: #065f46; font-size: 16px;">📦 Application Details</h3>
++                                        <h3 style="margin: 0 0 15px 0; color: #065f46; font-size: 16px;">📦 Order Details</h3>
+                                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #047857; font-size: 14px; width: 40%;">Product:</td>
+                                                 <td style="padding: 8px 0; color: #064e3b; font-size: 14px; font-weight: 600;">$productName</td>
+                                             </tr>
++$itemNumberRow
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #047857; font-size: 14px;">Amount:</td>
+                                                 <td style="padding: 8px 0; color: #064e3b; font-size: 14px; font-weight: 600;">$quantity units</td>
+@@ -1639,17 +1860,9 @@ class EmailService {
+                                     </td>
+                                 </tr>
+                             </table>
+-                            <table role="presentation" style="width: 100%; margin-top: 30px;">
+-                                <tr>
+-                                    <td align="center">
+-                                        <a href="mailto:$_fromEmail" style="display: inline-block; padding: 14px 32px; background-color: #6B8E3D; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+-                                            Confirm Receipt
+-                                        </a>
+-                                    </td>
+-                                </tr>
+-                            </table>
++${_openInAppButton(requestId != null ? MiaLinks.restockRequest(requestId) : MiaLinks.appHome, color: '#6B8E3D')}
+                             <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+-                                If you have any questions, please feel free to contact us.
++                                If you have any questions, please contact us at <a href="mailto:$_fromEmail" style="color: #6B8E3D;">$_fromEmail</a>.
+                             </p>
+                             <p style="margin: 20px 0 0 0; color: #374151; font-size: 14px;">
+                                 Saludos cordiales,<br><strong>$companyName</strong>
+@@ -1681,7 +1894,14 @@ class EmailService {
+     required int quantity,
+     required String companyName,
+     required String rejectionReason,
++    String? itemNumber,
+   }) {
++    final itemNumberRow = _itemNumberRow(
++      itemNumber,
++      labelColor: '#7f1d1d',
++      valueColor: '#450a0a',
++    );
++
+     return '''
+ <!DOCTYPE html>
+ <html lang="es">
+@@ -1716,6 +1936,7 @@ class EmailService {
+                                                 <td style="padding: 8px 0; color: #7f1d1d; font-size: 14px; width: 40%;">Product:</td>
+                                                 <td style="padding: 8px 0; color: #450a0a; font-size: 14px; font-weight: 600;">$productName</td>
+                                             </tr>
++$itemNumberRow
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #7f1d1d; font-size: 14px;">Amount:</td>
+                                                 <td style="padding: 8px 0; color: #450a0a; font-size: 14px; font-weight: 600;">$quantity units</td>
+@@ -1778,7 +1999,14 @@ class EmailService {
+     required String companyName,
+     String? notes,
+     required int requestId,
++    String? itemNumber,
+   }) {
++    final itemNumberRow = _itemNumberRow(
++      itemNumber,
++      labelColor: '#6b7280',
++      valueColor: '#111827',
++    );
++
+     final Map<String, Map<String, String>> priorityColors = {
+       'low': {'bg': '#f0fdf4', 'border': '#86efac', 'text': '#065f46'},
+       'medium': {'bg': '#eff6ff', 'border': '#93c5fd', 'text': '#1e40af'},
+@@ -1852,6 +2080,7 @@ class EmailService {
+                                                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px; width: 45%;">Product:</td>
+                                                 <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">$productName</td>
+                                             </tr>
++$itemNumberRow
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #6b7280; font-size: 14px;">Requested Quantity:</td>
+                                                 <td style="padding: 8px 0; color: #111827; font-size: 14px; font-weight: 600;">$requestedQuantity units</td>
+@@ -1883,15 +2112,7 @@ class EmailService {
+                                     </td>
+                                 </tr>
+                             </table>
+-                            <table role="presentation" style="width: 100%; margin-top: 30px;">
+-                                <tr>
+-                                    <td align="center">
+-                                        <a href="https://www.miatracker.com/app/#/restock-requests" style="display: inline-block; padding: 14px 32px; background-color: #2563eb; color: #ffffff; text-decoration: none; border-radius: 6px; font-weight: 600; font-size: 15px;">
+-                                            Review Request in Dashboard
+-                                        </a>
+-                                    </td>
+-                                </tr>
+-                            </table>
++${_openInAppButton(MiaLinks.restockRequest(requestId), label: 'Review Request in MIA Tracker', color: '#2563eb')}
+                             <p style="margin: 30px 0 0 0; color: #6b7280; font-size: 14px; line-height: 1.6;">
+                                 If you have any questions about this request, please contact $requesterName directly.
+                             </p>
+@@ -1926,7 +2147,14 @@ class EmailService {
+     required String companyName,
+     String? notes,
+     required int requestId,
++    String? itemNumber,
+   }) {
++    final itemNumberRow = _itemNumberRow(
++      itemNumber,
++      labelColor: '#1E40AF',
++      valueColor: '#1E3A8A',
++    );
++
+     final notesSection = (notes != null && notes.isNotEmpty)
+         ? '''
+         <table role="presentation" style="width: 100%; margin-top: 20px;">
+@@ -1955,7 +2183,7 @@ class EmailService {
+                 <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                     <tr>
+                         <td style="background: linear-gradient(135deg, #3B82F6 0%, #2563EB 100%); padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
+-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">🔔 New Restock Request</h1>
++                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">📦 Order Request</h1>
+                             <p style="margin: 10px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">MIA Tracker - $companyName</p>
+                         </td>
+                     </tr>
+@@ -1963,17 +2191,18 @@ class EmailService {
+                         <td style="padding: 40px;">
+                             <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px; line-height: 1.6;">Dear <strong>$supplierName</strong>,</p>
+                             <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 15px; line-height: 1.6;">
+-                                <strong>$companyName</strong> has created a new restock request for your products.
++                                <strong>$companyName</strong> is placing the following order request for your products.
+                             </p>
+                             <table role="presentation" style="width: 100%; border-collapse: collapse; background-color: #EFF6FF; border-radius: 8px; overflow: hidden; border: 1px solid #93C5FD;">
+                                 <tr>
+                                     <td style="padding: 20px;">
+-                                        <h3 style="margin: 0 0 15px 0; color: #1E40AF; font-size: 16px;">📦 Request Details</h3>
++                                        <h3 style="margin: 0 0 15px 0; color: #1E40AF; font-size: 16px;">📦 Order Details</h3>
+                                         <table role="presentation" style="width: 100%; border-collapse: collapse;">
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #1E40AF; font-size: 14px; width: 40%;">Product:</td>
+                                                 <td style="padding: 8px 0; color: #1E3A8A; font-size: 14px; font-weight: 600;">$productName</td>
+                                             </tr>
++$itemNumberRow
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #1E40AF; font-size: 14px;">Quantity:</td>
+                                                 <td style="padding: 8px 0; color: #1E3A8A; font-size: 14px; font-weight: 600;">$quantity units</td>
+@@ -1992,11 +2221,12 @@ class EmailService {
+                                     <td style="padding: 20px; background-color: #FEF3C7; border-left: 4px solid #F59E0B; border-radius: 4px;">
+                                         <h3 style="margin: 0 0 10px 0; color: #92400E; font-size: 16px;">💡 Next Steps</h3>
+                                         <p style="margin: 0; color: #78350F; font-size: 14px; line-height: 1.6;">
+-                                            Please review this request and confirm availability. We will notify you when approved.
++                                            Please review this order request and confirm availability. We will notify you when approved.
+                                         </p>
+                                     </td>
+                                 </tr>
+                             </table>
++${_openInAppButton(MiaLinks.restockRequest(requestId))}
+                             <p style="margin: 30px 0 0 0; color: #374151; font-size: 14px;">Best regards,<br><strong>$companyName</strong></p>
+                         </td>
+                     </tr>
+@@ -2028,7 +2258,14 @@ class EmailService {
+     String? internalNotes,
+     required String qrImageUrl,
+     required int requestId,
++    String? itemNumber,
+   }) {
++    final itemNumberRow = _itemNumberRow(
++      itemNumber,
++      labelColor: '#047857',
++      valueColor: '#064e3b',
++    );
++
+     final deliverySection = deliveryDate != null
+         ? '''
+         <tr>
+@@ -2060,7 +2297,7 @@ class EmailService {
+ <html lang="en">
+ <head>
+     <meta charset="UTF-8">
+-    <title>Request Approved</title>
++    <title>Order Request</title>
+ </head>
+ <body style="margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background-color: #f3f4f6;">
+     <table role="presentation" style="width: 100%; border-collapse: collapse;">
+@@ -2069,7 +2306,7 @@ class EmailService {
+                 <table role="presentation" style="width: 600px; max-width: 100%; background-color: #ffffff; border-radius: 8px; box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);">
+                     <tr>
+                         <td style="background: linear-gradient(135deg, #6B8E3D 0%, #5a7632 100%); padding: 40px; border-radius: 8px 8px 0 0; text-align: center;">
+-                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">✅ Request Approved</h1>
++                            <h1 style="margin: 0; color: #ffffff; font-size: 28px; font-weight: 700;">📦 Order Request</h1>
+                             <p style="margin: 10px 0 0 0; color: rgba(255, 255, 255, 0.9); font-size: 16px;">MIA Tracker</p>
+                         </td>
+                     </tr>
+@@ -2077,7 +2314,7 @@ class EmailService {
+                         <td style="padding: 40px;">
+                             <p style="margin: 0 0 20px 0; color: #374151; font-size: 16px;">Dear <strong>$supplierName</strong>,</p>
+                             <p style="margin: 0 0 30px 0; color: #6b7280; font-size: 15px;">
+-                                Your restock request has been <strong style="color: #6B8E3D;">approved</strong> by <strong>$companyName</strong>.
++                                <strong>$companyName</strong> is placing the following <strong style="color: #6B8E3D;">order request</strong> with you.
+                             </p>
+                             <table role="presentation" style="width: 100%; background-color: #f0fdf4; border-radius: 8px; border: 1px solid #86efac;">
+                                 <tr>
+@@ -2088,6 +2325,7 @@ class EmailService {
+                                                 <td style="padding: 8px 0; color: #047857; font-size: 14px; width: 40%;">Product:</td>
+                                                 <td style="padding: 8px 0; color: #064e3b; font-size: 14px; font-weight: 600;">$productName</td>
+                                             </tr>
++$itemNumberRow
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #047857; font-size: 14px;">Quantity:</td>
+                                                 <td style="padding: 8px 0; color: #064e3b; font-size: 14px; font-weight: 600;">$quantity units</td>
+@@ -2121,6 +2359,7 @@ class EmailService {
+                                     </td>
+                                 </tr>
+                             </table>
++${_openInAppButton(MiaLinks.restockRequest(requestId), color: '#6B8E3D')}
+                             <p style="margin: 30px 0 0 0; color: #374151; font-size: 14px;">Best regards,<br><strong>$companyName</strong></p>
+                         </td>
+                     </tr>
+@@ -2148,7 +2387,14 @@ class EmailService {
+     required String companyName,
+     required String completedDate,
+     required int requestId,
++    String? itemNumber,
+   }) {
++    final itemNumberRow = _itemNumberRow(
++      itemNumber,
++      labelColor: '#047857',
++      valueColor: '#064E3B',
++    );
++
+     return '''
+ <!DOCTYPE html>
+ <html>
+@@ -2182,6 +2428,7 @@ class EmailService {
+                                                 <td style="padding: 8px 0; color: #047857; font-size: 14px; width: 40%;">Product:</td>
+                                                 <td style="padding: 8px 0; color: #064E3B; font-size: 14px; font-weight: 600;">$productName</td>
+                                             </tr>
++$itemNumberRow
+                                             <tr>
+                                                 <td style="padding: 8px 0; color: #047857; font-size: 14px;">Quantity:</td>
+                                                 <td style="padding: 8px 0; color: #064E3B; font-size: 14px; font-weight: 600;">$quantity units</td>
+@@ -2207,6 +2454,7 @@ class EmailService {
+                                     </td>
+                                 </tr>
+                             </table>
++${_openInAppButton(MiaLinks.restockRequest(requestId), color: '#10B981')}
+                             <p style="margin: 30px 0 0 0; color: #374151; font-size: 14px;">Best regards,<br><strong>$companyName</strong></p>
+                         </td>
+                     </tr>
+diff --git a/lib/services/inventory_service.dart b/lib/services/inventory_service.dart
+index dc628e1..ff0471c 100644
+--- a/lib/services/inventory_service.dart
++++ b/lib/services/inventory_service.dart
+@@ -1227,6 +1227,7 @@
+             priority: priority,
+             supplierId: product['id_supply_company'] as int?,
+             notes: notes,
++            productId: productId, // -> Item Number (código de barras) en el correo
+           );
+         } catch (e) {
+           // La solicitud ya se guardó: un fallo de correo no debe revertirla.
+diff --git a/lib/services/restock_request_service.dart b/lib/services/restock_request_service.dart
+index 4885d5f..4878a4c 100644
+--- a/lib/services/restock_request_service.dart
++++ b/lib/services/restock_request_service.dart
+@@ -149,6 +149,7 @@ class RestockRequestService {
+           priority: priority,
+           supplierId: supplierId as int?,
+           notes: notes,
++          productId: productId, // -> Item Number (código de barras) en el correo
+         );
+       } catch (e) {
+         if (kDebugMode) print('⚠️ Error enviando correos: $e');
+diff --git a/lib/services/restock_service.dart b/lib/services/restock_service.dart
+index 59b56b5..4e31147 100644
+--- a/lib/services/restock_service.dart
++++ b/lib/services/restock_service.dart
+@@ -83,6 +83,7 @@ class RestockService {
+   ///   - requester_name : String
+   ///   - supplier        : {id, name, email, phone} | null
+   ///   - has_supplier    : bool
++  ///   - item_number     : String | null  (código de barras del producto)
+   static Future<void> _enrichRequests(List<Map<String, dynamic>> requests) async {
+     if (requests.isEmpty) return;
+ 
+@@ -100,6 +101,12 @@ class RestockService {
+         .toSet()
+         .toList();
+ 
++    final productIds = requests
++        .map((r) => r['id_inventario'])
++        .where((v) => v != null)
++        .toSet()
++        .toList();
++
+     // Solicitantes (profiles)
+     final Map<String, Map<String, dynamic>> profilesById = {};
+     if (userIds.isNotEmpty) {
+@@ -132,6 +139,24 @@ class RestockService {
+       }
+     }
+ 
++    // Item Number = código de barras del producto. Es la referencia que viaja
++    // en los correos; se muestra también en pantalla para que coincidan.
++    final Map<String, String?> itemNumbersByProduct = {};
++    if (productIds.isNotEmpty) {
++      try {
++        final prods = await _supabase
++            .from('inventario')
++            .select('id_inventario, codigo_barras')
++            .inFilter('id_inventario', productIds);
++        for (final prod in prods) {
++          itemNumbersByProduct[prod['id_inventario'].toString()] =
++              EmailService.extractItemNumber(prod['codigo_barras']);
++        }
++      } catch (e) {
++        if (kDebugMode) print('⚠️ No se pudieron cargar los códigos de barras: $e');
++      }
++    }
++
+     // Adjuntar a cada solicitud
+     for (final r in requests) {
+       final prof = profilesById[r['user_id']?.toString()];
+@@ -141,6 +166,8 @@ class RestockService {
+       final sup = suppliersById[r['id_supply_company']?.toString()];
+       r['supplier'] = sup; // {id, name, email, phone} | null
+       r['has_supplier'] = sup != null;
++
++      r['item_number'] = itemNumbersByProduct[r['id_inventario']?.toString()];
+     }
+   }
+ 
+@@ -167,7 +194,11 @@ class RestockService {
+           .eq('id_company', companyId)
+           .maybeSingle();
+ 
+-      return response;
++      if (response == null) return null;
++
++      final enriched = [Map<String, dynamic>.from(response)];
++      await _enrichRequests(enriched);
++      return enriched.first;
+     } catch (e) {
+       if (kDebugMode) print('❌ Error obteniendo detalle: $e');
+       return null;
+@@ -258,6 +289,7 @@ class RestockService {
+           priority: priority,
+           supplierId: supplierId as int?,
+           notes: notes,
++          productId: productId, // -> Item Number (código de barras) en el correo
+         );
+         if (kDebugMode) print('✅ Notificaciones enviadas');
+       } catch (e) {
+diff --git a/lib/utils/mia_links.dart b/lib/utils/mia_links.dart
+new file mode 100644
+index 0000000..5227c7f
+--- /dev/null
++++ b/lib/utils/mia_links.dart
+@@ -0,0 +1,129 @@
++// lib/utils/mia_links.dart
++//
++// URLs canónicas de MIA Tracker. Un solo lugar para cambiar dominio o rutas.
++//
++// El build web se sirve bajo https://www.miatracker.com/app/ (ver
++// miatrackerweb/vercel.json + <base href="/app/"> en el index.html generado)
++// y usa hash strategy, por eso las rutas van después de '#'.
++//
++// La MISMA URL sirve para los tres casos:
++//   - navegador  -> carga el Flutter web y navega a la ruta del '#'
++//   - Android    -> App Link (intent-filter con autoVerify + assetlinks.json)
++//   - iOS        -> Universal Link (Associated Domains + apple-app-site-association)
++// Si la app no está instalada, el sistema abre la web. No hace falta un
++// esquema propio tipo miatracker:// para esto.
++
++class MiaLinks {
++  /// Dominio usado por Universal Links (iOS) y App Links (Android).
++  static const String host = 'www.miatracker.com';
++
++  /// Base pública de la app.
++  static const String webBase = 'https://$host/app/';
++
++  /// Prefijo de path bajo el que vive el build web (para normalizar deep links).
++  static const String pathPrefix = '/app';
++
++  static String _webUrl(String route, {Map<String, String>? params}) {
++    final clean = route.startsWith('/') ? route : '/$route';
++    final query = (params == null || params.isEmpty)
++        ? ''
++        : '?${params.entries.map((e) => '${e.key}=${Uri.encodeQueryComponent(e.value)}').join('&')}';
++    return '$webBase#$clean$query';
++  }
++
++  /// Pantalla de solicitudes de restock, posicionada en una solicitud concreta.
++  static String restockRequest(int requestId) =>
++      _webUrl('/restock-management', params: {'request': '$requestId'});
++
++  /// Home de la app (destinatarios externos, p. ej. proveedores).
++  static String get appHome => webBase;
++
++  /// Dato codificado dentro del QR de la orden.
++  ///
++  /// ⚠️ NO cambiar el formato: qr_complete_order_screen.dart valida
++  /// exactamente este prefijo antes de aceptar el escaneo.
++  static String orderQrData(int requestId) =>
++      'miatracker://restock/complete/$requestId';
++
++  /// Imagen PNG del QR para incrustar en los correos.
++  static String qrImageUrl(String data, {int size = 300}) =>
++      'https://api.qrserver.com/v1/create-qr-code/?size=${size}x$size'
++      '&data=${Uri.encodeQueryComponent(data)}';
++
++  // ==========================================================================
++  // NORMALIZACIÓN DE DEEP LINKS
++  // ==========================================================================
++
++  /// Convierte cualquier forma en la que llegue un enlace a una ruta interna
++  /// (`/restock-management`) más sus query params.
++  ///
++  /// Acepta todo esto y devuelve lo mismo:
++  ///   https://www.miatracker.com/app/#/restock-management?request=12
++  ///   https://www.miatracker.com/app/restock-management?request=12
++  ///   /app/#/restock-management?request=12
++  ///   /restock-management?request=12
++  ///
++  /// Devuelve `null` si no reconoce una ruta interna.
++  static ({String route, Map<String, String> params})? parseRoute(String? raw) {
++    if (raw == null || raw.isEmpty) return null;
++
++    var value = raw.trim();
++
++    // Quitar esquema + host si viene una URL absoluta.
++    final uri = Uri.tryParse(value);
++    if (uri != null && uri.hasScheme) {
++      // Solo http(s) de NUESTRO dominio. Cualquier otro esquema
++      // (io.supabase.miatracker://, miatracker://, lo que sea) no es un enlace
++      // de correo y se maneja antes, en main.dart.
++      if (uri.scheme != 'http' && uri.scheme != 'https') return null;
++
++      String bare(String h) =>
++          h.toLowerCase().startsWith('www.') ? h.toLowerCase().substring(4) : h.toLowerCase();
++      if (bare(uri.host) != bare(host)) return null; // no es nuestro dominio
++
++      value = uri.path;
++      if (uri.hasQuery) value = '$value?${uri.query}';
++      if (uri.fragment.isNotEmpty) value = '$value#${uri.fragment}';
++    }
++
++    // Quedarse con lo que va después del '#' cuando existe (hash strategy).
++    final hashIndex = value.indexOf('#');
++    if (hashIndex != -1) {
++      final afterHash = value.substring(hashIndex + 1);
++      if (afterHash.startsWith('/')) value = afterHash;
++    }
++
++    // Quitar el prefijo /app con el que se sirve el build web.
++    if (value == pathPrefix || value == '$pathPrefix/') {
++      value = '/';
++    } else if (value.startsWith('$pathPrefix/')) {
++      value = value.substring(pathPrefix.length);
++    }
++
++    if (!value.startsWith('/')) value = '/$value';
++
++    // Separar query params.
++    final params = <String, String>{};
++    final queryIndex = value.indexOf('?');
++    if (queryIndex != -1) {
++      final queryString = value.substring(queryIndex + 1);
++      value = value.substring(0, queryIndex);
++      try {
++        params.addAll(Uri.splitQueryString(queryString));
++      } catch (_) {
++        // Escape mal formado ('%zz', '%' al final): splitQueryString lanza.
++        // Un enlace roto no puede tumbar el arranque de la app: se ignoran
++        // los parámetros y se conserva la ruta.
++      }
++    }
++
++    // Normalizar barra final sobrante.
++    if (value.length > 1 && value.endsWith('/')) {
++      value = value.substring(0, value.length - 1);
++    }
++
++    if (value.isEmpty || value == '/') return null;
++
++    return (route: value, params: params);
++  }
++}

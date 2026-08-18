@@ -7,7 +7,6 @@ import 'auth_service.dart';
 import 'inventory_service.dart';
 import 'profile_service.dart';
 import 'email_service.dart'; // 🔥 NUEVO: Para enviar emails
-import 'package:url_launcher/url_launcher.dart';  // 🔥 AGREGAR ESTA LÍNEA
 
 class RestockService {
   static final SupabaseClient _supabase = AuthService.client;
@@ -45,20 +44,28 @@ class RestockService {
       }
 
       final response = await query.order('fecha_solicitud', ascending: false);
+      final requests = List<Map<String, dynamic>>.from(response);
+
+      // 🔗 Enriquecer con solicitante (profiles) y proveedor (supply_company).
+      // La query base no trae JOINs, así que resolvemos los nombres aquí en un
+      // par de consultas por lote (evita "Unknown Product" / "User" / "N/A").
+      await _enrichRequests(requests);
 
       if (kDebugMode) {
-        print('✅ Solicitudes obtenidas: ${response.length}');
-        if (response.isNotEmpty) {
+        print('✅ Solicitudes obtenidas: ${requests.length}');
+        if (requests.isNotEmpty) {
+          final f = requests.first;
           print('   Primera solicitud:');
-          print('     - ID: ${response.first['id']}');
-          print('     - Producto: ${response.first['nombre_producto']}');
-          print('     - Status: ${response.first['status']}');
-          print('     - Cantidad: ${response.first['cantidad_solicitada']}');
+          print('     - ID: ${f['id']}');
+          print('     - Producto: ${f['nombre_producto']}');
+          print('     - Solicitante: ${f['requester_name']}');
+          print('     - Proveedor: ${f['supplier']?['name'] ?? "—"}');
+          print('     - Status: ${f['status']}');
         }
         print('═══════════════════════════════════════════════');
       }
 
-      return List<Map<String, dynamic>>.from(response);
+      return requests;
 
     } catch (e, stackTrace) {
       if (kDebugMode) {
@@ -67,6 +74,100 @@ class RestockService {
         print('Stack: $stackTrace');
       }
       return [];
+    }
+  }
+
+  /// Enriquecer solicitudes con el nombre del solicitante y los datos del
+  /// proveedor. Hace 2 consultas por lote (profiles + supply_company) en vez de
+  /// N JOINs, y adjunta a cada request:
+  ///   - requester_name : String
+  ///   - supplier        : {id, name, email, phone} | null
+  ///   - has_supplier    : bool
+  ///   - item_number     : String | null  (código de barras del producto)
+  static Future<void> _enrichRequests(List<Map<String, dynamic>> requests) async {
+    if (requests.isEmpty) return;
+
+    // IDs únicos
+    final userIds = requests
+        .map((r) => r['user_id'])
+        .where((v) => v != null)
+        .map((v) => v.toString())
+        .toSet()
+        .toList();
+
+    final supplierIds = requests
+        .map((r) => r['id_supply_company'])
+        .where((v) => v != null)
+        .toSet()
+        .toList();
+
+    final productIds = requests
+        .map((r) => r['id_inventario'])
+        .where((v) => v != null)
+        .toSet()
+        .toList();
+
+    // Solicitantes (profiles)
+    final Map<String, Map<String, dynamic>> profilesById = {};
+    if (userIds.isNotEmpty) {
+      try {
+        final profs = await _supabase
+            .from('profiles')
+            .select('id, full_name, username')
+            .inFilter('id', userIds);
+        for (final p in profs) {
+          profilesById[p['id'].toString()] = Map<String, dynamic>.from(p);
+        }
+      } catch (e) {
+        if (kDebugMode) print('⚠️ No se pudieron cargar perfiles: $e');
+      }
+    }
+
+    // Proveedores (supply_company)
+    final Map<String, Map<String, dynamic>> suppliersById = {};
+    if (supplierIds.isNotEmpty) {
+      try {
+        final sups = await _supabase
+            .from('supply_company')
+            .select('id, name, email, phone')
+            .inFilter('id', supplierIds);
+        for (final s in sups) {
+          suppliersById[s['id'].toString()] = Map<String, dynamic>.from(s);
+        }
+      } catch (e) {
+        if (kDebugMode) print('⚠️ No se pudieron cargar proveedores: $e');
+      }
+    }
+
+    // Item Number = código de barras del producto. Es la referencia que viaja
+    // en los correos; se muestra también en pantalla para que coincidan.
+    final Map<String, String?> itemNumbersByProduct = {};
+    if (productIds.isNotEmpty) {
+      try {
+        final prods = await _supabase
+            .from('inventario')
+            .select('id_inventario, codigo_barras')
+            .inFilter('id_inventario', productIds);
+        for (final prod in prods) {
+          itemNumbersByProduct[prod['id_inventario'].toString()] =
+              EmailService.extractItemNumber(prod['codigo_barras']);
+        }
+      } catch (e) {
+        if (kDebugMode) print('⚠️ No se pudieron cargar los códigos de barras: $e');
+      }
+    }
+
+    // Adjuntar a cada solicitud
+    for (final r in requests) {
+      final prof = profilesById[r['user_id']?.toString()];
+      r['requester_name'] =
+          prof?['full_name'] ?? prof?['username'] ?? 'User';
+
+      final sup = suppliersById[r['id_supply_company']?.toString()];
+      r['supplier'] = sup; // {id, name, email, phone} | null
+      r['has_supplier'] = sup != null;
+
+      r['item_number'] = itemNumbersByProduct[r['id_inventario']?.toString()];
     }
   }
 
@@ -93,7 +194,11 @@ class RestockService {
           .eq('id_company', companyId)
           .maybeSingle();
 
-      return response;
+      if (response == null) return null;
+
+      final enriched = [Map<String, dynamic>.from(response)];
+      await _enrichRequests(enriched);
+      return enriched.first;
     } catch (e) {
       if (kDebugMode) print('❌ Error obteniendo detalle: $e');
       return null;
@@ -150,7 +255,10 @@ class RestockService {
         'priority': priority,
         'status': 'pending',
         'user_id': userId,
-        'internal_notes': notes,
+        // `notes` = lo que escribe el solicitante (lo que lee la pantalla de
+        // detalle). `internal_notes` queda reservado para el admin al aprobar
+        // o rechazar; antes se pisaban entre sí.
+        'notes': notes,
         'id_supply_company': supplierId, // Proveedor si existe
         'fecha_solicitud': DateTime.now().toIso8601String(),
         'created_at': DateTime.now().toIso8601String(),
@@ -169,20 +277,21 @@ class RestockService {
         print('✅ Solicitud creada con ID: $requestId');
       }
 
-      // 2) Enviar correos a administradores de la compañía
+      // 2) Notificar a los tres: solicitante, jefe/admins y proveedor
       try {
-        print('📧 Llamando sendRestockRequestToAdmins...');
-        await EmailService.sendRestockRequestToAdmins(
+        await EmailService.notifyRestockCreated(
           requestId: requestId,
-          productId: productId,
+          companyId: companyId,
+          requesterUserId: userId,
           productName: productName,
           requestedQuantity: requestedQuantity,
           currentStock: currentStock,
           priority: priority,
-          companyId: companyId,
+          supplierId: supplierId as int?,
           notes: notes,
+          productId: productId, // -> Item Number (código de barras) en el correo
         );
-        if (kDebugMode) print('✅ Notificación a admins enviada');
+        if (kDebugMode) print('✅ Notificaciones enviadas');
       } catch (e) {
         if (kDebugMode) {
           print('⚠️ La solicitud se creó, pero falló el envío de email: $e');
@@ -248,81 +357,27 @@ class RestockService {
 
       if (kDebugMode) print('✅ Solicitud actualizada a approved');
 
-      // 🔥 2. GENERAR DEEP LINK PARA EL PROVEEDOR
-      final deepLink = 'miatracker://restock/approved/$requestId';
-      final qrData = 'miatracker://restock/complete/$requestId';
-
-      if (kDebugMode) {
-        print('═══════════════════════════════════════════════');
-        print('📱 INTENTANDO ABRIR APP DEL PROVEEDOR');
-        print('   Deep Link: $deepLink');
-        print('   Supplier ID: $supplierId');
-      }
-
-      // 🔥 3. INTENTAR ABRIR LA APP DEL PROVEEDOR
-      bool appOpened = false;
-
-      try {
-        final Uri deepLinkUri = Uri.parse(deepLink);
-
-        // Verificar si se puede abrir la app
-        if (await canLaunchUrl(deepLinkUri)) {
-          await launchUrl(
-            deepLinkUri,
-            mode: LaunchMode.externalApplication,
-          );
-
-          appOpened = true;
-
-          if (kDebugMode) {
-            print('✅ App del proveedor abierta exitosamente');
-            print('   No se enviará email (app abierta correctamente)');
-          }
-        } else {
-          if (kDebugMode) {
-            print('⚠️ No se puede abrir la app del proveedor');
-            print('   La app no está instalada o el deep link no está configurado');
-          }
-        }
-      } catch (e) {
-        if (kDebugMode) {
-          print('❌ Error intentando abrir app: $e');
-        }
-      }
-
-      // 🔥 4. SI LA APP NO SE ABRIÓ, ENVIAR EMAIL
-      if (!appOpened) {
-        if (kDebugMode) {
-          print('═══════════════════════════════════════════════');
-          print('📧 APP NO ABIERTA - ENVIANDO EMAIL DE RESPALDO');
-          print('   Motivo: App no instalada o deep link falló');
-        }
-
-        try {
-          await EmailService.sendApprovalEmailWithQR(
-            requestId: requestId,
-            supplierId: supplierId,
-            deliveryDate: estimatedDeliveryDate,
-            internalNotes: internalNotes,
-            qrData: qrData,
-          );
-
-          if (kDebugMode) {
-            print('✅ Email de respaldo enviado exitosamente');
-          }
-        } catch (emailError) {
-          if (kDebugMode) {
-            print('❌ Error enviando email de respaldo: $emailError');
-          }
-          // No relanzar el error - la aprobación ya se guardó en BD
-        }
-      }
+      // 2. 📧 NOTIFICAR A LOS TRES: proveedor (con QR), solicitante y jefe/admins.
+      //
+      // NOTA: aquí antes se intentaba abrir `miatracker://restock/approved/...`
+      // con canLaunchUrl y SOLO se mandaba correo si la app no abría. Ese
+      // esquema nunca estuvo registrado (AndroidManifest e Info.plist solo
+      // declaran `io.supabase.miatracker`), así que era código muerto que
+      // además hacía el envío condicional. El correo ahora sale siempre.
+      final notified = await EmailService.notifyRestockApproved(
+        requestId: requestId,
+        supplierId: supplierId,
+        companyId: companyId,
+        deliveryDate: estimatedDeliveryDate,
+        internalNotes: internalNotes,
+      );
 
       if (kDebugMode) {
         print('═══════════════════════════════════════════════');
         print('✅ PROCESO DE APROBACIÓN COMPLETADO');
-        print('   App abierta: ${appOpened ? "SÍ" : "NO"}');
-        print('   Email enviado: ${!appOpened ? "SÍ" : "NO (no necesario)"}');
+        print('   Correo al proveedor  : ${notified['supplier'] == true ? "SÍ" : "NO"}');
+        print('   Correo al solicitante: ${notified['requester'] == true ? "SÍ" : "NO"}');
+        print('   Correo al jefe/admins: ${notified['admins'] == true ? "SÍ" : "NO"}');
         print('═══════════════════════════════════════════════');
       }
     } catch (e) {
@@ -331,41 +386,6 @@ class RestockService {
         print('═══════════════════════════════════════════════');
       }
       rethrow;
-    }
-  }
-
-// 🔥 MÉTODO AUXILIAR: Notificación de respaldo (opcional - por si quieres usarlo en otro lugar)
-  static Future<void> _sendFallbackNotification(
-      int requestId,
-      int supplierId, {
-        DateTime? deliveryDate,
-        String? internalNotes,
-      }) async {
-    try {
-      if (kDebugMode) {
-        print('═══════════════════════════════════════════════');
-        print('📧 Enviando notificación de respaldo...');
-      }
-
-      final qrData = 'miatracker://restock/complete/$requestId';
-
-      await EmailService.sendApprovalEmailWithQR(
-        requestId: requestId,
-        supplierId: supplierId,
-        deliveryDate: deliveryDate,
-        internalNotes: internalNotes ?? 'Aprobación notificada vía sistema',
-        qrData: qrData,
-      );
-
-      if (kDebugMode) {
-        print('✅ Notificación de respaldo enviada exitosamente');
-        print('═══════════════════════════════════════════════');
-      }
-    } catch (e) {
-      if (kDebugMode) {
-        print('❌ Error en notificación de respaldo: $e');
-        print('═══════════════════════════════════════════════');
-      }
     }
   }
 
@@ -392,6 +412,17 @@ class RestockService {
           .eq('id_company', companyId);
 
       if (kDebugMode) print('❌ Solicitud rechazada');
+
+      // 📧 Notificar a los tres (solicitante, jefe/admins y proveedor).
+      try {
+        await EmailService.notifyRestockRejected(
+          requestId: requestId,
+          companyId: companyId,
+          reason: reason,
+        );
+      } catch (e) {
+        if (kDebugMode) print('⚠️ Rechazo guardado, pero falló el envío: $e');
+      }
     } catch (e) {
       if (kDebugMode) print('❌ Error al rechazar: $e');
       throw Exception('Error al rechazar: $e');
@@ -568,12 +599,12 @@ class RestockService {
 
   static String getStatusText(String? status) {
     switch (status?.toLowerCase()) {
-      case 'pending': return 'Pendiente';
-      case 'approved': return 'Aprobada';
-      case 'rejected': return 'Rechazada';
-      case 'completed': return 'Completada';
-      case 'cancelled': return 'Cancelada';
-      default: return 'Desconocido';
+      case 'pending': return 'Pending';
+      case 'approved': return 'Approved';
+      case 'rejected': return 'Rejected';
+      case 'completed': return 'Completed';
+      case 'cancelled': return 'Cancelled';
+      default: return 'Unknown';
     }
   }
 
@@ -590,10 +621,10 @@ class RestockService {
 
   static String getPriorityText(String? priority) {
     switch (priority?.toLowerCase()) {
-      case 'low': return 'Baja';
+      case 'low': return 'Low';
       case 'normal': return 'Normal';
-      case 'high': return 'Alta';
-      case 'urgent': return 'Urgente';
+      case 'high': return 'High';
+      case 'urgent': return 'Urgent';
       default: return 'Normal';
     }
   }

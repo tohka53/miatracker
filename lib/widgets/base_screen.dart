@@ -2,6 +2,7 @@
 
 import 'package:flutter/material.dart';
 import 'collapsible_drawer.dart';
+import 'notifications_bell_icon.dart';
 
 class BaseScreen extends StatelessWidget {
   final Widget child;
@@ -27,7 +28,10 @@ class BaseScreen extends StatelessWidget {
         appBar: AppBar(
           title: Text(title),
           leading: const SizedBox.shrink(), // El drawer maneja su propio botón
-          actions: actions,
+          actions: [
+            const NotificationsBellIcon(), // 🔔 Campana con badge en todas las pantallas
+            ...?actions,
+          ],
         ),
         body: child,
         floatingActionButton: floatingActionButton,

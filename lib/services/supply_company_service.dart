@@ -1,6 +1,8 @@
 import 'package:flutter/foundation.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import '../services/auth_service.dart';
+import 'inventory_service.dart';
+import 'profile_service.dart';
 
 class SupplyCompanyService {
   static final SupabaseClient _supabase = AuthService.client;
@@ -15,12 +17,17 @@ class SupplyCompanyService {
       final userId = AuthService.currentUser?.id;
       if (userId == null) return [];
 
-      final response = await _supabase
-          .from('supply_company')
-          .select()
-          .eq('user_id', userId)
-          .eq('status', 1)
-          .order('created_at', ascending: false);
+      var query = _supabase.from('supply_company').select().eq('status', 1);
+
+      // Super admin ve TODOS los proveedores de todas las compañías
+      if (!await ProfileService.isSuperAdmin()) {
+        final companyId = await InventoryService.getCurrentCompanyId();
+        query = companyId != null
+            ? query.or('id_company.eq.$companyId,user_id.eq.$userId')
+            : query.eq('user_id', userId);
+      }
+
+      final response = await query.order('created_at', ascending: false);
 
       return List<Map<String, dynamic>>.from(response);
     } catch (e) {
@@ -38,7 +45,6 @@ class SupplyCompanyService {
           .from('supply_company')
           .select()
           .eq('id', supplierId)
-          .eq('user_id', userId)
           .eq('status', 1)
           .maybeSingle();
 
@@ -56,11 +62,14 @@ class SupplyCompanyService {
       final userId = AuthService.currentUser?.id;
       if (userId == null) throw Exception('Usuario no autenticado');
 
+      final companyId = await InventoryService.getCurrentCompanyId();
+
       final response = await _supabase
           .from('supply_company')
           .insert({
         ...supplierData,
         'user_id': userId,
+        'id_company': companyId,
         'created_at': DateTime.now().toIso8601String(),
         'status': 1,
       })
@@ -86,8 +95,7 @@ class SupplyCompanyService {
         ...updates,
         'updated_at': DateTime.now().toIso8601String(),
       })
-          .eq('id', supplierId)
-          .eq('user_id', userId);
+          .eq('id', supplierId);
     } catch (e) {
       throw Exception('Error al actualizar proveedor: $e');
     }
@@ -105,8 +113,7 @@ class SupplyCompanyService {
         'status': 0,
         'updated_at': DateTime.now().toIso8601String(),
       })
-          .eq('id', supplierId)
-          .eq('user_id', userId);
+          .eq('id', supplierId);
     } catch (e) {
       throw Exception('Error al eliminar proveedor: $e');
     }
@@ -123,20 +130,8 @@ class SupplyCompanyService {
       final userId = AuthService.currentUser?.id;
       if (userId == null) return [];
 
-      try {
-        final response = await _supabase.rpc(
-          'search_suppliers',
-          params: {
-            'user_uuid': userId,
-            'search_text': searchText,
-          },
-        );
-        return List<Map<String, dynamic>>.from(response);
-      } catch (e) {
-        // Fallback a búsqueda manual si la función RPC falla
-        if (kDebugMode) print('RPC search_suppliers falló, usando fallback: $e');
-        return _searchSuppliersFallback(searchText);
-      }
+      // Búsqueda por compañía (evita el RPC scoped por user_id)
+      return _searchSuppliersFallback(searchText);
     } catch (e) {
       if (kDebugMode) print('Error en búsqueda: $e');
       return [];
@@ -146,13 +141,13 @@ class SupplyCompanyService {
   static Future<List<Map<String, dynamic>>> _searchSuppliersFallback(
       String searchText) async {
     try {
-      final userId = AuthService.currentUser?.id;
-      if (userId == null) return [];
+      final companyId = await InventoryService.getCurrentCompanyId();
+      if (companyId == null) return [];
 
       final response = await _supabase
           .from('supply_company')
           .select()
-          .eq('user_id', userId)
+          .eq('id_company', companyId)
           .eq('status', 1)
           .or(
           'name.ilike.%$searchText%,email.ilike.%$searchText%,phone.ilike.%$searchText%,description.ilike.%$searchText%')
@@ -169,23 +164,8 @@ class SupplyCompanyService {
   static Future<List<Map<String, dynamic>>> getProductsBySupplier(
       int supplierId) async {
     try {
-      final userId = AuthService.currentUser?.id;
-      if (userId == null) return [];
-
-      try {
-        final response = await _supabase.rpc(
-          'get_products_by_supplier',
-          params: {
-            'user_uuid': userId,
-            'supplier_id': supplierId,
-          },
-        );
-        return List<Map<String, dynamic>>.from(response);
-      } catch (e) {
-        // Fallback si la función RPC no existe
-        if (kDebugMode) print('RPC get_products_by_supplier falló, usando fallback: $e');
-        return _getProductsBySupplierFallback(supplierId);
-      }
+      // Consulta directa por compañía (evita el RPC scoped por user_id)
+      return _getProductsBySupplierFallback(supplierId);
     } catch (e) {
       if (kDebugMode) print('Error obteniendo productos: $e');
       return [];
@@ -195,8 +175,8 @@ class SupplyCompanyService {
   static Future<List<Map<String, dynamic>>> _getProductsBySupplierFallback(
       int supplierId) async {
     try {
-      final userId = AuthService.currentUser?.id;
-      if (userId == null) return [];
+      final companyId = await InventoryService.getCurrentCompanyId();
+      if (companyId == null) return [];
 
       final response = await _supabase
           .from('inventario')
@@ -207,7 +187,7 @@ class SupplyCompanyService {
             lugar_fisico
           )
         ''')
-          .eq('user_id', userId)
+          .eq('id_company', companyId)
           .eq('id_supply_company', supplierId)
           .eq('status', 1)
           .order('nombre_producto', ascending: true);

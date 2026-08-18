@@ -4,7 +4,6 @@
 import 'package:flutter/foundation.dart';
 import 'auth_service.dart';
 import 'inventory_service.dart';
-import 'profile_service.dart';
 import 'email_service.dart'; // ⬅️ NUEVO IMPORT
 
 class RestockRequestService {
@@ -138,21 +137,22 @@ class RestockRequestService {
 
       if (kDebugMode) print('✅ Solicitud creada con fecha: $fechaSolicitud');
 
-      // 🔥 ENVIAR EMAIL A SUPPLY COMPANY (si tiene proveedor)
-      if (supplierId != null) {
-        try {
-          await EmailService.sendNewRestockRequestToSupplier(
-            requestId: response['id'],
-            supplierId: supplierId,
-            productName: product['nombre_producto'],
-            quantity: requestedQuantity,
-            companyId: companyId,
-            notes: notes,
-          );
-          if (kDebugMode) print('📧 Email enviado a proveedor');
-        } catch (e) {
-          if (kDebugMode) print('⚠️ Error enviando email: $e');
-        }
+      // 🔥 NOTIFICAR A LOS TRES: solicitante, jefe/admins y proveedor
+      try {
+        await EmailService.notifyRestockCreated(
+          requestId: response['id'] as int,
+          companyId: companyId,
+          requesterUserId: userId,
+          productName: (product['nombre_producto'] ?? 'Producto').toString(),
+          requestedQuantity: requestedQuantity,
+          currentStock: (product['cantidad'] as int?) ?? 0,
+          priority: priority,
+          supplierId: supplierId as int?,
+          notes: notes,
+          productId: productId, // -> Item Number (código de barras) en el correo
+        );
+      } catch (e) {
+        if (kDebugMode) print('⚠️ Error enviando correos: $e');
       }
 
       return {
@@ -340,15 +340,15 @@ class RestockRequestService {
   static String getStatusText(String? status) {
     switch (status?.toLowerCase()) {
       case 'pending':
-        return 'Pendiente';
+        return 'Pending';
       case 'approved':
-        return 'Aprobada';
+        return 'Approved';
       case 'rejected':
-        return 'Rechazada';
+        return 'Rejected';
       case 'completed':
-        return 'Completada';
+        return 'Completed';
       case 'cancelled':
-        return 'Cancelada';
+        return 'Cancelled';
       default:
         return 'Desconocido';
     }
