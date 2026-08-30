@@ -1,0 +1,314 @@
+<!doctype html>
+<html lang="es-419">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Eliminación de cuenta y datos | M.I.A Tracker</title>
+<meta name="description" content="Cómo solicitar la eliminación permanente de tu cuenta de M.I.A Tracker y de los datos asociados: pasos, qué se borra, qué se conserva y por cuánto tiempo.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --hero:#064e3b;
+    --hero-soft:#065f46;
+    --page:#f9fafb;
+    --card:#ffffff;
+    --text:#374151;
+    --muted:#6b7280;
+    --heading:#111827;
+    --accent:#bef264;
+    --accent-ink:#3f6212;
+    --border:#e5e7eb;
+    --danger:#b91c1c;
+    --danger-bg:#fef2f2;
+    --danger-br:#fecaca;
+  }
+  *{box-sizing:border-box}
+  html{-webkit-text-size-adjust:100%}
+  body{
+    margin:0;
+    background:var(--page);
+    color:var(--text);
+    font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;
+    font-size:16px;
+    line-height:1.65;
+  }
+  .wrap{max-width:780px;margin:0 auto;padding:0 20px}
+
+  /* ---------- Hero ---------- */
+  header.hero{background:var(--hero);color:#fff;padding:40px 0 48px}
+  .back{
+    display:inline-flex;align-items:center;gap:7px;
+    color:var(--accent);text-decoration:none;
+    font-size:.875rem;font-weight:500;margin-bottom:26px;
+  }
+  .back:hover{text-decoration:underline}
+  .back svg{width:14px;height:14px}
+  header.hero h1{
+    margin:0 0 12px;color:#fff;
+    font-size:clamp(1.75rem,5vw,2.25rem);font-weight:700;line-height:1.2;
+    letter-spacing:-.02em;
+  }
+  header.hero p.lede{
+    margin:0 0 28px;color:#d1fae5;font-size:1.0625rem;max-width:60ch;
+  }
+  .meta{
+    display:grid;gap:14px 32px;
+    grid-template-columns:repeat(auto-fit,minmax(190px,1fr));
+    border-top:1px solid rgba(190,242,100,.28);padding-top:22px;
+  }
+  .meta dt{
+    color:var(--accent);font-size:.6875rem;font-weight:600;
+    text-transform:uppercase;letter-spacing:.09em;margin-bottom:3px;
+  }
+  .meta dd{margin:0;color:#fff;font-size:.9375rem;font-weight:500;word-break:break-word}
+  .meta dd a{color:#fff}
+
+  /* ---------- Contenido ---------- */
+  main{padding:44px 0 8px}
+  section.card{
+    background:var(--card);border:1px solid var(--border);border-radius:14px;
+    padding:30px;margin-bottom:22px;
+  }
+  section.card > :first-child{margin-top:0}
+  section.card > :last-child{margin-bottom:0}
+  h2{
+    color:var(--heading);font-size:1.3125rem;font-weight:700;
+    letter-spacing:-.01em;margin:0 0 6px;
+  }
+  h2 .num{
+    display:inline-flex;align-items:center;justify-content:center;
+    width:26px;height:26px;margin-right:10px;border-radius:7px;
+    background:var(--hero);color:var(--accent);
+    font-size:.8125rem;font-weight:700;vertical-align:2px;
+  }
+  h3{color:var(--heading);font-size:1rem;font-weight:600;margin:26px 0 8px}
+  p{margin:0 0 14px}
+  .sub{color:var(--muted);font-size:.9375rem;margin:0 0 22px}
+  a{color:var(--accent-ink);font-weight:500}
+  strong{color:var(--heading);font-weight:600}
+
+  /* ---------- Pasos ---------- */
+  ol.steps{list-style:none;counter-reset:s;margin:0;padding:0}
+  ol.steps li{
+    counter-increment:s;position:relative;
+    padding:0 0 20px 44px;
+  }
+  ol.steps li:not(:last-child)::after{
+    content:"";position:absolute;left:13px;top:30px;bottom:2px;
+    width:2px;background:var(--border);
+  }
+  ol.steps li::before{
+    content:counter(s);position:absolute;left:0;top:1px;
+    width:28px;height:28px;border-radius:50%;
+    background:var(--hero);color:#fff;
+    display:flex;align-items:center;justify-content:center;
+    font-size:.8125rem;font-weight:600;
+  }
+  ol.steps li:last-child{padding-bottom:0}
+
+  /* ---------- Tablas ---------- */
+  .scroller{overflow-x:auto;-webkit-overflow-scrolling:touch;margin:0 0 6px}
+  table{border-collapse:collapse;width:100%;min-width:460px;font-size:.9375rem}
+  th,td{text-align:left;padding:11px 14px;border-bottom:1px solid var(--border);vertical-align:top}
+  thead th{
+    background:var(--page);color:var(--heading);
+    font-size:.75rem;font-weight:600;text-transform:uppercase;letter-spacing:.06em;
+    border-bottom:2px solid var(--border);white-space:nowrap;
+  }
+  tbody tr:last-child td{border-bottom:none}
+  td.plazo{white-space:nowrap;color:var(--muted)}
+
+  /* ---------- Avisos ---------- */
+  .alert{
+    border-radius:11px;padding:16px 18px;margin:22px 0 0;
+    font-size:.9375rem;line-height:1.6;
+  }
+  .alert.danger{background:var(--danger-bg);border:1px solid var(--danger-br)}
+  .alert.danger strong{color:var(--danger)}
+  .alert.info{background:#f0fdf4;border:1px solid #bbf7d0}
+  .alert p:last-child{margin-bottom:0}
+
+  ul.plain{margin:0 0 14px;padding-left:20px}
+  ul.plain li{margin-bottom:6px}
+
+  /* ---------- Resumen EN ---------- */
+  section.en{background:#f3f4f6;border-color:#e5e7eb}
+  section.en h2{font-size:1.125rem}
+  section.en .sub{margin-bottom:16px}
+
+  /* ---------- Footer ---------- */
+  footer{
+    border-top:1px solid var(--border);margin-top:32px;padding:26px 0 48px;
+    color:var(--muted);font-size:.875rem;
+  }
+  footer p{margin:0 0 6px}
+
+  @media (max-width:560px){
+    section.card{padding:22px 18px;border-radius:12px}
+    header.hero{padding:30px 0 38px}
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="wrap">
+    <a class="back" href="/">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5M12 19l-7-7 7-7"/></svg>
+      Volver al inicio
+    </a>
+    <h1>Eliminación de cuenta y datos</h1>
+    <p class="lede">Cómo eliminar permanentemente tu cuenta de <strong style="color:#fff">M.I.A&nbsp;Tracker</strong> y todos los datos asociados, qué se borra y qué se conserva.</p>
+    <dl class="meta">
+      <div>
+        <dt>Aplicación</dt>
+        <dd>M.I.A Tracker</dd>
+      </div>
+      <div>
+        <dt>Desarrollador</dt>
+        <dd>TechSolutions GT</dd>
+      </div>
+      <div>
+        <dt>Última actualización</dt>
+        <dd>28 de agosto de 2026</dd>
+      </div>
+      <div>
+        <dt>Contacto</dt>
+        <dd><a href="mailto:support@miatracker.com">support@miatracker.com</a></dd>
+      </div>
+    </dl>
+  </div>
+</header>
+
+<main class="wrap">
+
+  <section class="card">
+    <h2><span class="num">1</span>Eliminar tu cuenta desde la app</h2>
+    <p class="sub">Es el método más rápido: el borrado ocurre de inmediato, sin intervención de nuestro equipo.</p>
+    <ol class="steps">
+      <li>Abre <strong>M.I.A Tracker</strong> en tu dispositivo e inicia sesión con la cuenta que quieres eliminar.</li>
+      <li>Toca el ícono de menú <strong>(☰)</strong> en la esquina superior izquierda para abrir el panel lateral.</li>
+      <li>Desplázate hasta el final del panel. Debajo de <em>Cerrar sesión</em> encontrarás el botón rojo <strong>Eliminar cuenta</strong>.</li>
+      <li>Lee el aviso de confirmación y toca <strong>Eliminar mi cuenta</strong>.</li>
+      <li>La cuenta y sus datos se eliminan en ese momento y la sesión se cierra automáticamente.</li>
+    </ol>
+    <div class="alert danger">
+      <p><strong>Esta acción es permanente y no se puede deshacer.</strong> No existe periodo de gracia ni forma de recuperar la información una vez confirmada la eliminación. Si necesitas conservar tu inventario, expórtalo antes desde la sección de Reportes.</p>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">2</span>Si no puedes acceder a la app</h2>
+    <p class="sub">Por ejemplo, si perdiste el acceso a tu correo o desinstalaste la aplicación.</p>
+    <ol class="steps">
+      <li>Escribe a <a href="mailto:support@miatracker.com?subject=Eliminaci%C3%B3n%20de%20cuenta%20-%20M.I.A%20Tracker"><strong>support@miatracker.com</strong></a> desde el correo electrónico con el que te registraste.</li>
+      <li>Usa como asunto <strong>«Eliminación de cuenta»</strong> e incluye el correo de la cuenta que deseas eliminar.</li>
+      <li>Verificaremos tu identidad para asegurarnos de que la solicitud proviene del titular de la cuenta.</li>
+      <li>Procesamos la eliminación en un plazo máximo de <strong>30 días</strong> y te confirmamos por correo cuando esté completa.</li>
+    </ol>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">3</span>Qué datos se eliminan</h2>
+    <p class="sub">Todo lo siguiente se borra de forma permanente de nuestros sistemas activos.</p>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>Tipo de dato</th><th>Detalle</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Cuenta de acceso</strong></td>
+            <td>Dirección de correo electrónico y credenciales de autenticación.</td>
+          </tr>
+          <tr>
+            <td><strong>Perfil</strong></td>
+            <td>Nombre completo, nombre de usuario, foto de perfil, empresa y rol asignado.</td>
+          </tr>
+          <tr>
+            <td><strong>Inventario</strong></td>
+            <td>Productos, descripciones, códigos de barras y QR, cantidades, alertas de existencias y la distribución de existencias por ubicación.</td>
+          </tr>
+          <tr>
+            <td><strong>Ubicaciones</strong></td>
+            <td>Lugares físicos registrados y sus coordenadas geográficas.</td>
+          </tr>
+          <tr>
+            <td><strong>Activos y mantenimiento</strong></td>
+            <td>Activos registrados, historial de mantenimientos, costos, técnicos y notas asociadas.</td>
+          </tr>
+          <tr>
+            <td><strong>Imágenes</strong></td>
+            <td>Todas las fotografías de productos e inventario que subiste al almacenamiento de la aplicación.</td>
+          </tr>
+          <tr>
+            <td><strong>Operaciones</strong></td>
+            <td>Órdenes, transferencias entre ubicaciones, solicitudes de reabastecimiento, alertas de existencias y notificaciones.</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section class="card">
+    <h2><span class="num">4</span>Qué se conserva y por cuánto tiempo</h2>
+    <p class="sub">Únicamente lo estrictamente necesario por razones técnicas, de seguridad o de obligación legal.</p>
+    <div class="scroller">
+      <table>
+        <thead>
+          <tr><th>Qué</th><th>Por qué</th><th>Plazo</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Copias de seguridad cifradas</strong></td>
+            <td>Rotación normal del sistema de respaldos. No se consultan ni se restauran salvo por un incidente.</td>
+            <td class="plazo">Hasta 30 días</td>
+          </tr>
+          <tr>
+            <td><strong>Registros de servidor</strong></td>
+            <td>Dirección IP y metadatos técnicos, conservados para prevención de fraude, abuso y ataques.</td>
+            <td class="plazo">Hasta 12 meses</td>
+          </tr>
+          <tr>
+            <td><strong>Registros contables o fiscales</strong></td>
+            <td>Comprobantes de operaciones sujetas a obligaciones legales, conservados en forma disociada de tu identidad.</td>
+            <td class="plazo">Según la ley aplicable</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="alert info">
+      <p><strong>Cuentas de empresa compartida.</strong> Si tu cuenta pertenece a una organización con más usuarios, los registros que documentan operaciones realizadas en conjunto pueden conservarse bajo la cuenta de esa organización, sin los datos que te identifican personalmente. Tu perfil, tus credenciales y tus datos personales se eliminan igualmente.</p>
+    </div>
+  </section>
+
+  <section class="card en" lang="en">
+    <h2>Account &amp; Data Deletion — English summary</h2>
+    <p class="sub">Applies to the <strong>M.I.A Tracker</strong> mobile application, developed by TechSolutions GT.</p>
+    <h3>How to request deletion</h3>
+    <ul class="plain">
+      <li><strong>In the app:</strong> sign in → open the side menu (☰) → scroll to the bottom → tap the red <strong>Eliminar cuenta</strong> (Delete account) button → confirm. Deletion is immediate and irreversible.</li>
+      <li><strong>By email:</strong> write to <a href="mailto:support@miatracker.com">support@miatracker.com</a> from your registered address with the subject “Account deletion”. We process the request within 30 days.</li>
+    </ul>
+    <h3>Data that is deleted</h3>
+    <p>Login credentials and email address; profile data (name, username, avatar, company, role); the entire inventory (products, barcodes, quantities, per-location stock); locations and their coordinates; assets and maintenance history; all uploaded product and inventory images; orders, transfers, restock requests, stock alerts and notifications.</p>
+    <h3>Data that is retained</h3>
+    <p>Encrypted backups for up to 30 days as part of normal rotation; server and security logs for up to 12 months; accounting or tax records for as long as applicable law requires, dissociated from your identity.</p>
+  </section>
+
+  <section class="card">
+    <h2>¿Dudas antes de eliminar?</h2>
+    <p>Si tienes preguntas sobre qué ocurre con tu información, escríbenos a <a href="mailto:support@miatracker.com">support@miatracker.com</a> antes de confirmar la eliminación. También puedes consultar nuestra <a href="/privacidad">Política de Privacidad</a>.</p>
+  </section>
+
+</main>
+
+<footer class="wrap">
+  <p><strong>M.I.A Tracker</strong> — Maintenance, Inventory &amp; Asset Tracker</p>
+  <p>Esta página describe el procedimiento de eliminación de cuenta requerido por Google Play y App Store.</p>
+</footer>
+
+</body>
+</html>

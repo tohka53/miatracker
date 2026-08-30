@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../screens/qr_complete_order_screen.dart';
 import '../services/auth_service.dart';
+import '../services/account_deletion_service.dart';
 import '../services/cart_service.dart';
 import '../services/marketplace_cart_service.dart';
 import '../screens/inventory_screen.dart';
@@ -902,7 +903,7 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
                     ),
                     const SizedBox(width: 15),
                     Text(
-                      'Log Out',
+                      'Cerrar sesión',
                       style: TextStyle(
                         color: Colors.red.withValues(alpha: 0.8),
                         fontSize: 16,
@@ -915,8 +916,45 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
             ),
           ),
           const SizedBox(height: 10),
+          Material(
+            color: Colors.transparent,
+            child: InkWell(
+              borderRadius: BorderRadius.circular(15),
+              onTap: _handleDeleteAccount,
+              child: Container(
+                padding:
+                    const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(15),
+                  color: Colors.red.withValues(alpha: 0.12),
+                  border: Border.all(color: Colors.red.withValues(alpha: 0.5)),
+                ),
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.delete_forever,
+                      color: Colors.red.withValues(alpha: 0.9),
+                      size: 24,
+                    ),
+                    const SizedBox(width: 15),
+                    Expanded(
+                      child: Text(
+                        'Eliminar cuenta',
+                        style: TextStyle(
+                          color: Colors.red.withValues(alpha: 0.9),
+                          fontSize: 16,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 10),
           Text(
-            'M.I.A Tracker v1.7.0',
+            'M.I.A Tracker v1.0.0',
             style: TextStyle(
               color: Colors.white.withValues(alpha: 0.5),
               fontSize: 12,
@@ -1085,15 +1123,67 @@ class _CollapsibleDrawerState extends State<CollapsibleDrawer>
   Future<void> _handleLogout() async {
     try {
       await AuthService.signOut();
+      if (!mounted) return;
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error logging out: $e'),
+            content: Text('Error al cerrar sesión: $e'),
             backgroundColor: Colors.red,
           ),
         );
       }
+    }
+  }
+
+  /// Borrado permanente de cuenta. Requerido por App Store Guideline 5.1.1(v).
+  Future<void> _handleDeleteAccount() async {
+    final confirmar = await showDialog<bool>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Eliminar cuenta'),
+        content: const Text(
+          'Esta acción es permanente y no se puede deshacer.\n\n'
+          'Se eliminarán tu perfil, todo tu inventario, tus ubicaciones, '
+          'las fotos de productos y tus órdenes de reabastecimiento.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx, false),
+            child: const Text('Cancelar'),
+          ),
+          TextButton(
+            style: TextButton.styleFrom(foregroundColor: Colors.red),
+            onPressed: () => Navigator.pop(ctx, true),
+            child: const Text('Eliminar mi cuenta'),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmar != true || !mounted) return;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (_) => const Center(child: CircularProgressIndicator()),
+    );
+
+    try {
+      await AccountDeletionService.deleteAccount();
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      Navigator.of(context).pushNamedAndRemoveUntil('/login', (r) => false);
+    } catch (e) {
+      if (!mounted) return;
+      Navigator.of(context, rootNavigator: true).pop();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(e.toString().replaceFirst('Exception: ', '')),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 }
